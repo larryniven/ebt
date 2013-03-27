@@ -58,7 +58,6 @@ struct GraphData {
     ebt::Range edges;
     std::vector<int> tail;
     std::vector<int> head;
-    std::vector<double> weight;
 };
 @
 
@@ -72,7 +71,6 @@ public:
     ebt::Range edges() const;
     int tail(int e) const;
     int head(int e) const;
-    double weight(int e) const;
     std::vector<int> const & adj(int v) const;
 
 private:
@@ -116,11 +114,6 @@ int Graph::head(int e) const
     return g_.head.at(e);
 }
 
-double Graph::weight(int e) const
-{
-    return g_.weight.at(e);
-}
-
 void Graph::index_adj()
 {
     for (auto &&i: edges()) {
@@ -137,11 +130,35 @@ std::vector<int> const & Graph::adj(int v) const
 \section{Depth First Search}
 
 @<depth first search@>=
-template <class Traversing, class Traversed>
 void depth_first_search(Graph const &g, int root,
-    Traversing traversing, Traversed traversed)
+    std::function<void(int)> begin_traverse,
+    std::function<void(int)> end_traverse);
+@
+
+@<depth first search impl@>=
+void depth_first_search(Graph const &g, int root,
+    std::function<void(int)> begin_traverse,
+    std::function<void(int)> end_traverse)
 {
-    
+    std::vector<int> stack;
+    std::vector<int> path;
+    std::unordered_set<int> traversed;
+    while (stack.size() > 0) {
+        int v = stack.back();
+        stack.resize(stack.size() - 1);
+        while (g.adj(path.back()).find(v) != g.adj(path.back()).end()) {
+            end_traverse(path.back());
+            path.resize(path.size() - 1);
+        }
+        path.push_back(v);
+        begin_traverse(v);
+        traversed.insert(v);
+        for (int e: g.adj(v)) {
+            if (traversed.find(v) != traversed.end()) {
+                stack.push_back(g.head(e));
+            }
+        }
+    }
 }
 @
 
@@ -220,18 +237,17 @@ void BellmanFord::relax(int e)
 
 @<graph data@>
 @<graph@>
-@<Bellman-Ford@>
+@<depth first search@>
 
 #endif
 @
 
 @<fst.cc@>=
 #include "fst.h"
-#include <limits>
 #include <algorithm>
 
 @<graph impl@>
-@<Bellman-Ford impl@>
+@<depth first search impl@>
 @
 
 \end{document}
