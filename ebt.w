@@ -9,6 +9,9 @@
 \maketitle
 
 @<ebt.h@>=
+#ifndef EBT_H
+#define EBT_H
+
 #include <vector>
 #include <string>
 #include <iterator>
@@ -16,7 +19,7 @@
 namespace ebt {
 
 std::vector<std::string> split(std::string const &s,
-    std::string const &sep="");
+    std::string sep="");
 
 class RangeIterator : public std::iterator<int, std::input_iterator_tag> {
 public:
@@ -32,7 +35,7 @@ private:
 
 class Range {
 public:
-    Range(int start, int end, int inc);
+    Range(int start, int end, int inc=1);
 
     RangeIterator begin() const;
     RangeIterator end() const;
@@ -46,6 +49,8 @@ private:
 };
 
 }
+
+#endif
 @
 
 @<ebt.cc@>=
@@ -108,7 +113,7 @@ void Split::push_back(std::vector<std::string> &list,
 }
 
 std::vector<std::string> split(std::string const &s,
-    std::string const &sep)
+    std::string sep)
 {
     return Split(s, sep).compute();
 }
