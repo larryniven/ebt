@@ -2,7 +2,7 @@ CXXFLAGS += -std=c++11
 
 .PHONY: all clean doc
 
-all: ebt.o test_dfs test_shortest test_product2 test_product3
+all: libebt.a test_dfs test_shortest test_product2 test_product3
 
 doc: ebt.pdf fst.pdf
 
@@ -10,6 +10,7 @@ clean:
 	-rm *.o
 	-rm *.h *.cc
 	-rm *.tex *.log *.aux *.pdf
+	-rm libebt.a
 	-rm test_dfs test_shortest test_product2 test_product3
 
 fst.h: fst.w
@@ -46,6 +47,9 @@ ebt.tex: ebt.w
 ebt.pdf: ebt.tex
 	pdflatex ebt
 	pdflatex ebt
+
+libebt.a: ebt.o
+	$(AR) rcs $@ $^
 
 ebt.o: ebt.h
 
