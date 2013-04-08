@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <iterator>
+#include <unordered_map>
 
 namespace ebt {
 
@@ -46,6 +47,161 @@ private:
     int start_;
     int end_;
     int inc_;
+};
+
+template <class T>
+struct Left {
+    T value;
+};
+
+template <class T>
+Left<T> left(T t)
+{
+    return Left<T> { std::move(t) };
+}
+
+template <class T>
+struct Right {
+    T value;
+};
+
+template <class T>
+Right<T> right(T t)
+{
+    return Right<T> { std::move(t) };
+}
+
+template <class L, class R>
+struct Either {
+    Either()
+        : is_left_(true)
+    {}
+
+    Either(Left<L> left)
+        : left_(std::move(left.value)), is_left_(true)
+    {
+    }
+
+    Either(Right<R> right)
+        : right_(std::move(right.value)), is_left_(false)
+    {
+    }
+
+    bool is_left() const
+    {
+        return is_left_;
+    }
+
+    bool is_right() const
+    {
+        return !is_left_;
+    }
+
+    L const & left() const
+    {
+        return left_;
+    }
+
+    R const & right() const
+    {
+        return right_;
+    }
+
+    bool operator==(Either const &that) const
+    {
+        if (this->is_left() && that.is_left()) {
+            return this->left() == that.left();
+        } else if (this->is_right() && that.is_right()) {
+            return this->right() == that.right();
+        } else {
+            return false;
+        }
+    }
+
+private:
+    L left_;
+    R right_;
+    bool is_left_;
+};
+
+template <class T>
+class Option {
+public:
+    Option()
+    {}
+
+    Option(T t)
+        : some_(right(std::move(t)))
+    {}
+
+    bool has_none() const
+    {
+        return some_.is_left();
+    }
+
+    bool has_some() const
+    {
+        return some_.is_right();
+    }
+
+    T const & some() const
+    {
+        return some_.right();
+    }
+
+private:
+    struct None {};
+
+    Either<None, T> some_;
+};
+
+template <class T>
+Option<T> some(T t)
+{
+    return Option<T>(std::move(t));
+}
+
+template <class T>
+Option<T> none()
+{
+    return Option<T>();
+}
+
+template <class K, class V>
+Option<K> get(std::unordered_map<K, V> const &map, K const &key)
+{
+    if (map.find(key) == map.end()) {
+        return none<K>();
+    } else {
+        return some(map.at(key));
+    }
+}
+
+template <class K, class V>
+K const & get(std::unordered_map<K, V> const &map, K const &key,
+    V const &default_)
+{
+    if (map.find(key) == map.end()) {
+        return default_;
+    } else {
+        return map.at(key);
+    }
+}
+
+}
+
+namespace std {
+
+template <class Left, class Right>
+struct hash<ebt::Either<Left, Right>> {
+    size_t operator()(ebt::Either<Left, Right> const &e) const
+    {
+        if (e.is_left()) {
+            return std::hash<Left>()(e.left());
+        } else {
+            return std::hash<Right>()(e.right());
+        }
+    }
 };
 
 }

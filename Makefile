@@ -1,9 +1,8 @@
-CXX=litg++
 CXXFLAGS += -std=c++11
 
 .PHONY: all clean doc
 
-all: ebt.o fst.o test_dfs test_shortest
+all: ebt.o test_dfs test_shortest test_product2 test_product3
 
 doc: ebt.pdf fst.pdf
 
@@ -11,10 +10,7 @@ clean:
 	-rm *.o
 	-rm *.h *.cc
 	-rm *.tex *.log *.aux *.pdf
-	-rm test_dfs test_shortest
-
-fst.cc: fst.w
-	tangle.py fst.w fst.cc > fst.cc
+	-rm test_dfs test_shortest test_product2 test_product3
 
 fst.h: fst.w
 	tangle.py fst.w fst.h > fst.h
@@ -24,6 +20,12 @@ test_dfs.cc: fst.w
 
 test_shortest.cc: fst.w
 	tangle.py fst.w test_shortest.cc > test_shortest.cc
+
+test_product2.cc: fst.w
+	tangle.py fst.w test_product2.cc > test_product2.cc
+
+test_product3.cc: fst.w
+	tangle.py fst.w test_product3.cc > test_product3.cc
 
 fst.tex: fst.w
 	weave.py fst.w > fst.tex
@@ -46,12 +48,19 @@ ebt.pdf: ebt.tex
 	pdflatex ebt
 
 ebt.o: ebt.h
-fst.o: fst.h ebt.h
+
 test_dfs.o: fst.h ebt.h
 test_shortest.o: fst.h ebt.h
 
-test_dfs: test_dfs.o ebt.o fst.o
+test_dfs: test_dfs.o ebt.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_shortest: test_shortest.o ebt.o fst.o
+test_shortest: test_shortest.o ebt.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_product2: test_product2.o ebt.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_product3: test_product3.o ebt.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
