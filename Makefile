@@ -1,8 +1,10 @@
 CXXFLAGS += -std=c++11
 
-.PHONY: all clean doc
+.PHONY: all clean doc test
 
-all: libebt.a test_dfs test_shortest test_product2 test_product3
+all: ebt.h fst.h libebt.a
+
+test: test_dfs test_shortest test_product2 test_product3
 
 doc: ebt.pdf fst.pdf
 

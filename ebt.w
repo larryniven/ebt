@@ -77,12 +77,12 @@ struct Either {
         : is_left_(true)
     {}
 
-    Either(Left<L> left)
+    explicit Either(Left<L> left)
         : left_(std::move(left.value)), is_left_(true)
     {
     }
 
-    Either(Right<R> right)
+    explicit Either(Right<R> right)
         : right_(std::move(right.value)), is_left_(false)
     {
     }
@@ -124,13 +124,24 @@ private:
     bool is_left_;
 };
 
+template <class L, class R>
+std::ostream& operator<<(std::ostream &os, Either<L, R> const &e)
+{
+    if (e.is_left()) {
+        os << "l:" << e.left();
+    } else {
+        os << "r:" << e.right();
+    }
+    return os;
+}
+
 template <class T>
 class Option {
 public:
     Option()
     {}
 
-    Option(T t)
+    explicit Option(T t)
         : some_(right(std::move(t)))
     {}
 
@@ -168,17 +179,17 @@ Option<T> none()
 }
 
 template <class K, class V>
-Option<K> get(std::unordered_map<K, V> const &map, K const &key)
+Option<V> get(std::unordered_map<K, V> const &map, K const &key)
 {
     if (map.find(key) == map.end()) {
-        return none<K>();
+        return none<V>();
     } else {
         return some(map.at(key));
     }
 }
 
 template <class K, class V>
-K const & get(std::unordered_map<K, V> const &map, K const &key,
+V const & get(std::unordered_map<K, V> const &map, K const &key,
     V const &default_)
 {
     if (map.find(key) == map.end()) {
@@ -187,6 +198,10 @@ K const & get(std::unordered_map<K, V> const &map, K const &key,
         return map.at(key);
     }
 }
+
+bool startswith(std::string const &s, std::string const &prefix);
+
+size_t & hash_combine(size_t &seed, size_t value);
 
 }
 
@@ -197,12 +212,56 @@ struct hash<ebt::Either<Left, Right>> {
     size_t operator()(ebt::Either<Left, Right> const &e) const
     {
         if (e.is_left()) {
-            return std::hash<Left>()(e.left());
+            return hash<Left>()(e.left());
         } else {
-            return std::hash<Right>()(e.right());
+            return hash<Right>()(e.right());
         }
     }
 };
+
+template <class U, class V>
+struct hash<pair<U, V>> {
+    size_t operator()(std::pair<U, V> const &p) const
+    {
+        hash<U> v_hasher;
+        hash<V> u_hasher;
+        size_t seed = 0;
+        ebt::hash_combine(seed, v_hasher(p.first));
+        ebt::hash_combine(seed, u_hasher(p.second));
+        return seed;
+    }
+};
+
+template <class T1, class T2, class T3>
+struct hash<tuple<T1, T2, T3>> {
+    size_t operator()(tuple<T1, T2, T3> const &t) const
+    {
+        hash<T1> t1_hasher;
+        hash<T2> t2_hasher;
+        hash<T3> t3_hasher;
+
+        size_t seed = 0;
+        ebt::hash_combine(seed, t1_hasher(get<0>(t)));
+        ebt::hash_combine(seed, t2_hasher(get<1>(t)));
+        ebt::hash_combine(seed, t3_hasher(get<2>(t)));
+        return seed;
+    }
+};
+
+template <class U, class V>
+ostream & operator<<(ostream &os, pair<U, V> const &p)
+{
+    os << "(" << p.first << ", " << p.second << ")";
+    return os;
+}
+
+template <class T1, class T2, class T3>
+ostream & operator<<(ostream &os, tuple<T1, T2, T3> const &t)
+{
+    os << "(" << get<0>(t) << ", " << get<1>(t) << ", "
+        << get<2>(t) << ")";
+    return os;
+}
 
 }
 
@@ -313,6 +372,18 @@ RangeIterator Range::end() const
 unsigned int Range::size() const
 {
     return end_ - start_;
+}
+
+bool startswith(std::string const &s, std::string const &prefix)
+{
+    return s.find(prefix) == 0;
+}
+
+size_t & hash_combine(size_t &seed, size_t value)
+{
+    seed ^= value + 0x9e3779b9
+        + (seed >> 6) + (seed << 2);
+    return seed;
 }
 
 }
