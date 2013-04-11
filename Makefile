@@ -2,7 +2,7 @@ CXXFLAGS += -std=c++11
 
 .PHONY: all clean doc test
 
-all: ebt.h fst.h libebt.a
+all: libebt.a
 
 test: test_dfs test_shortest test_product2 test_product3
 
@@ -17,6 +17,9 @@ clean:
 
 fst.h: fst.w
 	tangle.py fst.w fst.h > fst.h
+
+fst.cc: fst.w
+	tangle.py fst.w fst.cc > fst.cc
 
 test_dfs.cc: fst.w
 	tangle.py fst.w test_dfs.cc > test_dfs.cc
@@ -50,23 +53,24 @@ ebt.pdf: ebt.tex
 	pdflatex ebt
 	pdflatex ebt
 
-libebt.a: ebt.o
+libebt.a: ebt.o fst.o
 	$(AR) rcs $@ $^
 
 ebt.o: ebt.h
+fst.o: fst.h
 
 test_dfs.o: fst.h ebt.h
 test_shortest.o: fst.h ebt.h
 
-test_dfs: test_dfs.o ebt.o
+test_dfs: test_dfs.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_shortest: test_shortest.o ebt.o
+test_shortest: test_shortest.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_product2: test_product2.o ebt.o
+test_product2: test_product2.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_product3: test_product3.o ebt.o
+test_product3: test_product3.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 

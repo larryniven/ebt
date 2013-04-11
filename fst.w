@@ -73,6 +73,11 @@ public:
         }
     }
 
+    Data & data()
+    {
+        return g_;
+    }
+
 protected:
     void index_adj()
     {
@@ -357,6 +362,49 @@ int main()
 }
 @
 
+\subsection{Canonicalization}
+
+@<canonicalize@>=
+template <class F>
+Fst<int, int> canonicalize(F const &fst)
+{
+    typedef typename F::Vertex V;
+    typedef typename F::Edge E;
+
+    std::unordered_map<V, int> vmap;
+    std::unordered_map<E, int> emap;
+
+    FstData<int, int> fst_data;
+
+    auto b = [&](E const &e) {
+        if (emap.find(e) == emap.end()) {
+            emap[e] = emap.size();
+            fst_data.edges.insert(emap.at(e));
+        }
+        if (vmap.find(fst.tail(e)) == vmap.end()) {
+            vmap[fst.tail(e)] = vmap.size();
+            fst_data.vertices.insert(vmap.at(fst.tail(e)));
+        }
+        if (vmap.find(fst.head(e)) == vmap.end()) {
+            vmap[fst.head(e)] = vmap.size();
+            fst_data.vertices.insert(vmap.at(fst.head(e)));
+        }
+        fst_data.tail[emap.at(e)] = vmap.at(fst.tail(e));
+        fst_data.head[emap.at(e)] = vmap.at(fst.head(e));
+        fst_data.weight[emap.at(e)] = fst.weight(e);
+        fst_data.input[emap.at(e)] = fst.input(e);
+        fst_data.output[emap.at(e)] = fst.output(e);
+    };
+    auto e = [&](E const &e) {};
+    depth_first_search(fst, fst.start(), b, e);
+
+    fst_data.start = vmap.at(fst.start());
+    fst_data.end = vmap.at(fst.end());
+
+    return Fst<int, int>(std::move(fst_data));
+}
+@
+
 \subsection{Composition}
 
 @<self-loop fst@>=
@@ -470,6 +518,41 @@ public:
         return fst_.end();
     }
 };
+
+template <>
+class SelfLoopFst<Fst<int, int, FstData<int, int>>>
+    : public Fst<int, int, FstData<int, int>> {
+public:
+    typedef int Vertex;
+    typedef int Edge;
+
+    SelfLoopFst(Fst<int, int, FstData<int, int>> fst);
+};
+@
+
+@<self-loop fst impl@>=
+SelfLoopFst<Fst<int, int, FstData<int, int>>>::SelfLoopFst(
+    Fst<int, int, FstData<int, int>> fst)
+    : Fst<int, int, FstData<int, int>>(std::move(fst.data()))
+{
+    int max_e = 0;
+    for (auto &e: g_.edges) {
+        if (e > max_e) {
+            max_e = e;
+        }
+    }
+
+    for (auto &v: g_.vertices) {
+        int e = ++max_e;
+        g_.edges.insert(e);
+        g_.tail[e] = v;
+        g_.head[e] = v;
+        g_.weight[e] = 0;
+        g_.input[e] = "<eps>";
+        g_.output[e] = "<eps>";
+        adj_[v].insert(e);
+    }
+}
 @
 
 @<test_self_loop.cc@>=
@@ -775,9 +858,11 @@ private:
     SelfLoopFst<Fst2> fst2_;
     SelfLoopFst<Fst3> fst3_;
 
-    std::unordered_map<std::tuple<typename SelfLoopFst<Fst2>::Vertex,
-        std::string, std::string>,
-        std::unordered_set<typename SelfLoopFst<Fst2>::Edge>> fst2_index_;
+    std::unordered_map<
+        std::tuple<typename SelfLoopFst<Fst2>::Vertex,
+            std::string, std::string>,
+        std::unordered_set<typename SelfLoopFst<Fst2>::Edge>>
+        fst2_index_;
 
     void index_fst2()
     {
@@ -938,6 +1023,13 @@ int main()
 @<three-way product fst@>
 
 #endif
+@
+
+@<fst.cc@>=
+#include "fst.h"
+
+@<self-loop fst impl@>
+
 @
 
 \appendix
