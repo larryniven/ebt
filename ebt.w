@@ -28,6 +28,7 @@
 #include <tuple>
 #include <list>
 #include <cctype>
+#include <unordered_set>
 
 @<hash combine@>
 
@@ -57,6 +58,7 @@
 @<vector utility@>
 @<list utility@>
 @<unordered_map utility@>
+@<unordered_set utility@>
 
 @<parser@>
 
@@ -916,6 +918,30 @@ struct hash<unordered_map<K, V>> {
         for (auto &p: map) {
             seed ^= ebt::hash_combine(k_hasher(p.first),
                 v_hasher(p.second));
+        }
+
+        return seed;
+    }
+};
+
+}
+@
+
+\subsection{Unordered Set Utility}
+
+@<unordered_set utility@>=
+namespace std {
+
+template <class T>
+struct hash<unordered_set<T>> {
+    size_t operator()(unordered_set<T> const &set) const noexcept
+    {
+        size_t seed = 0;
+
+        hash<T> t_hasher;
+
+        for (auto &e: set) {
+            seed ^= t_hasher(e);
         }
 
         return seed;
