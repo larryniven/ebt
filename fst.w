@@ -9,17 +9,26 @@
 \newtheorem{theorem}{Theorem}
 
 \title{Finite State Transducers}
-\author{Hao Tang\\\texttt{haotang@ttic.edu}}
+\author{Hao Tang\\\texttt{haotang@@ttic.edu}}
 \begin{document}
 
 \maketitle
 
-\section{Finite State Transducers}
+\tableofcontents
+
+\section{Finite State Transducer (FST)}
 
 \subsection{Graph}
 
-A graph $G$ is a pair $(V, E)$ where $E \subseteq V \times V$.
-Let $\text{adj}(u) = \{(u, v) \in E \mid v \in V\}$.
+A graph $G$ is a four tuple $(V, E, tail, head)$, where
+$V$ is the vertex set, $E$ is the edge set, $tail: E \to V$
+is a function that maps an edge to its tail vertex,
+and $head: E \to V$ is a function that maps an edge
+to its head vertex.  Representing a graph this way
+instead of defining $E$ as a subset of $V \times V$
+allow us to represent simple graphs and multigraphs
+in a consistent way.  We will encounter multigraphs
+when we define finite finite state transducers.
 
 @<graph data@>=
 template <class V, class E>
@@ -30,6 +39,11 @@ struct GraphData {
     std::unordered_map<E, V> head;
 };
 @
+
+We wrap a set of commonly used functions in a class
+for convenience.  This class also creates an adjacency
+list upon receiving the graph data, and hence implements
+the function $adj(u) = \{e \in E \mid tail(e) = u\}$.
 
 @<graph@>=
 template <class V, class E, class Data=GraphData<V, E>>
@@ -126,7 +140,13 @@ public:
 };
 @
 
-\subsection{FST}
+\subsection{Finite State Transducer}
+
+Let $\Sigma$ be a set of symbols or alphabet.
+A finite state transducer (FST) is a weighted graph with
+two additional functions $input: E \to \Sigma^*$ and
+$output: E \to \Sigma^*$, a starting vertex, and an ending
+vertex.
 
 @<fst data@>=
 template <class V, class E>
@@ -192,7 +212,7 @@ void depth_first_search(G const &g, typename G::Vertex root,
     std::vector<E> path;
     std::unordered_set<E> traversed;
 
-    for (E const &e: g.adj(root)) {
+    for (auto &&e: g.adj(root)) {
         stack.push(e);
         traversed.insert(e);
     }
@@ -200,19 +220,14 @@ void depth_first_search(G const &g, typename G::Vertex root,
     while (stack.size() > 0) {
         E e = stack.top();
         stack.pop();
-        while (path.size() > 0) {
-            auto &&adj = g.adj(g.head(path.back()));
-            if (adj.find(e) == adj.end()) {
-                end_traverse(path.back());
-                path.resize(path.size() - 1);
-            } else {
-                break;
-            }
+        while (path.size() > 0 && g.head(path.back()) != g.tail(e)) {
+            end_traverse(path.back());
+            path.resize(path.size() - 1);
         }
         path.push_back(e);
         begin_traverse(e);
         traversed.insert(e);
-        for (E const &ch: g.adj(g.head(e))) {
+        for (auto &&ch: g.adj(g.head(e))) {
             if (traversed.find(ch) == traversed.end()) {
                 stack.push(ch);
             }
@@ -287,7 +302,7 @@ shortest_path(G const &g, typename G::Vertex const &s,
 
         event_pop(v);
 
-        for (auto &e: g.adj(v)) {
+        for (auto &&e: g.adj(v)) {
 
             event_adj(e);
 
@@ -471,14 +486,25 @@ public:
         }
     }
 
-    std::unordered_set<E> adj(V const &v) const
+    struct Adj {
+        using iterable = decltype(
+            std::declval<Fst>().adj(std::declval<V>()));
+
+        using return_type
+            = ebt::ChainIterable2<std::vector<E>,
+                ebt::MapIterable<iterable,
+                    std::function<E(typename Fst::Edge)>>>;
+    };
+
+    typename Adj::return_type adj(V const &v) const
     {
-        std::unordered_set<E> result;
-        for (auto &e: fst_.adj(v)) {
-            result.insert(E(ebt::left(e)));
-        }
-        result.insert(E(ebt::right(loops_.at(v))));
-        return result;
+        std::function<E(typename Fst::Edge)> f
+            = [](typename Fst::Edge e)
+                { return E(ebt::left(std::move(e))); };
+
+        return ebt::chain(std::vector<E>
+            { E(ebt::right(loops_.at(v))) },
+            ebt::map(fst_.adj(v), std::move(f)));
     }
 
     double weight(E const &e) const
@@ -596,17 +622,36 @@ int main()
 
 @<two-way product fst@>=
 template <class Fst1, class Fst2>
-class ProductFst2 {
-public:
-    typedef std::pair<typename SelfLoopFst<Fst1>::Vertex,
-        typename SelfLoopFst<Fst2>::Vertex> Vertex;
-    typedef std::pair<typename SelfLoopFst<Fst1>::Edge,
-        typename SelfLoopFst<Fst2>::Edge> Edge;
+class EpsilonFreeProductFst2 {
+private:
+    Fst1 fst1_;
+    Fst2 fst2_;
 
+public:
+    typedef std::pair<typename Fst1::Vertex,
+        typename Fst2::Vertex> Vertex;
     typedef Vertex V;
+
+    struct Adj {
+        using product_iterable
+            = ebt::ProductIterable<
+                decltype(std::declval<Fst1>().adj(
+                    std::declval<V>().first)),
+                decltype(std::declval<Fst2>().adj(
+                    std::declval<V>().second))>;
+
+        using product_value
+            = typename product_iterable::value_type;
+
+        using return_type
+            = ebt::FilterIterable<product_iterable,
+                std::function<bool(product_value const &)>>;
+    };
+
+    typedef typename Adj::product_value Edge;
     typedef Edge E;
 
-    ProductFst2(Fst1 fst1, Fst2 fst2)
+    EpsilonFreeProductFst2(Fst1 fst1, Fst2 fst2)
         : fst1_(std::move(fst1)), fst2_(std::move(fst2))
     {}
 
@@ -634,42 +679,43 @@ public:
 
     V tail(E const &e) const
     {
-        return std::make_pair(fst1_.tail(e.first),
-            fst2_.tail(e.second));
+        return std::make_pair(fst1_.tail(e.first.get()),
+            fst2_.tail(e.second.get()));
     }
 
     V head(E const &e) const
     {
-        return std::make_pair(fst1_.head(e.first),
-            fst2_.head(e.second));
+        return std::make_pair(fst1_.head(e.first.get()),
+            fst2_.head(e.second.get()));
     }
 
-    std::unordered_set<E> adj(V const &v) const
+    typename Adj::return_type adj(V const &v) const
     {
-        std::unordered_set<E> result;
-        for (auto &e1: fst1_.adj(v.first)) {
-            for (auto &e2: fst2_.adj(v.second)) {
-                if (fst1_.output(e1) == fst2_.input(e2)) {
-                    result.insert(std::make_pair(e1, e2));
-                }
-            }
-        }
-        return result;
+        std::function<
+            bool(typename Adj::product_value const &)> f
+            = [&](typename Adj::product_value const &p) {
+                return fst1_.output(p.first.get())
+                    == fst2_.input(p.second.get());
+            };
+
+        return ebt::filter(ebt::product(fst1_.adj(v.first),
+            fst2_.adj(v.second)), std::move(f));
     }
 
     double weight(E const &e) const
     {
-        return fst1_.weight(e.first) + fst2_.weight(e.second);
+        return fst1_.weight(e.first.get())
+            + fst2_.weight(e.second.get());
     }
 
     std::string input(E const &e) const
     {
-        return fst1_.input(e.first);
+        return fst1_.input(e.first.get());
     }
 
     std::string output(E const &e) const
     {
-        return fst2_.output(e.second);
+        return fst2_.output(e.second.get());
     }
 
     V start() const
@@ -681,11 +727,11 @@ public:
     {
         return std::make_pair(fst1_.end(), fst2_.end());
     }
-
-private:
-    SelfLoopFst<Fst1> fst1_;
-    SelfLoopFst<Fst2> fst2_;
 };
+
+template <class Fst1, class Fst2>
+using ProductFst2 = EpsilonFreeProductFst2<SelfLoopFst<Fst1>,
+    SelfLoopFst<Fst2>>;
 
 template <class Fst1, class Fst2>
 ProductFst2<Fst1, Fst2> compose(Fst1 fst1, Fst2 fst2)
@@ -693,9 +739,17 @@ ProductFst2<Fst1, Fst2> compose(Fst1 fst1, Fst2 fst2)
     return ProductFst2<Fst1, Fst2>(std::move(fst1),
         std::move(fst2));
 }
+
+template <class Fst1, class Fst2>
+EpsilonFreeProductFst2<Fst1, Fst2>
+epsilon_free_compose(Fst1 fst1, Fst2 fst2)
+{
+    return EpsilonFreeProductFst2<Fst1, Fst2>(std::move(fst1),
+        std::move(fst2));
+}
 @
 
-@<test_product2.cc@>=
+@<test_fst_product2.cc@>=
 #include "fst.h"
 #include <iostream>
 
@@ -725,7 +779,7 @@ int main()
         0
     });
 
-    auto fst = compose(fst1, fst2);
+    auto fst = epsilon_free_compose(fst1, fst2);
 
     std::unordered_map<typename decltype(fst)::Vertex, double> d;
     std::unordered_map<typename decltype(fst)::Vertex,
@@ -747,19 +801,19 @@ int main()
 
 @<three-way product fst@>=
 template <class Fst1, class Fst2, class Fst3>
-class ProductFst3 {
+class EpsilonFreeProductFst3 {
 public:
-    typedef std::tuple<typename SelfLoopFst<Fst1>::Vertex,
-        typename SelfLoopFst<Fst2>::Vertex,
-        typename SelfLoopFst<Fst3>::Vertex> Vertex;
-    typedef std::tuple<typename SelfLoopFst<Fst1>::Edge,
-        typename SelfLoopFst<Fst2>::Edge,
-        typename SelfLoopFst<Fst3>::Edge> Edge;
+    typedef std::tuple<typename Fst1::Vertex,
+        typename Fst2::Vertex,
+        typename Fst3::Vertex> Vertex;
+    typedef std::tuple<typename Fst1::Edge,
+        typename Fst2::Edge,
+        typename Fst3::Edge> Edge;
 
     typedef Vertex V;
     typedef Edge E;
 
-    ProductFst3(Fst1 fst1, Fst2 fst2, Fst3 fst3)
+    EpsilonFreeProductFst3(Fst1 fst1, Fst2 fst2, Fst3 fst3)
         : fst1_(std::move(fst1))
         , fst2_(std::move(fst2))
         , fst3_(std::move(fst3))
@@ -803,25 +857,46 @@ public:
             fst3_.head(std::get<2>(e)));
     }
 
-    std::unordered_set<E> adj(V const &v) const
+    struct Adj {
+        using adj1 = decltype(std::declval<Fst1>().adj(
+            std::get<0>(std::declval<V>())));
+        using adj3 = decltype(std::declval<Fst3>().adj(
+            std::get<2>(std::declval<V>())));
+        using product = ebt::ProductIterable<adj1, adj3>;
+        using product_value = typename product::value_type;
+        using edge_iterable = ebt::MapIterable<
+            std::unordered_set<typename Fst2::Edge> const &,
+            std::function<E(typename Fst2::Edge)>>;
+        using iterable_set = ebt::MapIterable<product,
+            std::function<edge_iterable(product_value const &p)>>;
+        using return_type = ebt::ChainIterable<iterable_set>;
+    };
+
+    typename Adj::return_type adj(V const &v) const
     {
-        std::unordered_set<E> result;
-        for (auto &e1: fst1_.adj(std::get<0>(v))) {
-            for (auto &e3: fst3_.adj(std::get<2>(v))) {
-                if (fst2_index_.find(std::make_tuple(
-                    std::get<1>(v), fst1_.output(e1),
-                    fst3_.input(e3))) == fst2_index_.end()) {
-                        continue;
-                }
-                auto &edges = fst2_index_.at(std::make_tuple(
-                    std::get<1>(v), fst1_.output(e1),
-                    fst3_.input(e3)));
-                for (auto &e2: edges) {
-                    result.insert(std::make_tuple(e1, e2, e3));
-                }
-            }
-        }
-        return result;
+        std::unordered_set<typename Fst2::Edge> empty;
+        std::function<typename Adj::edge_iterable(
+                typename Adj::product_value const &)> g
+            = [&, empty](typename Adj::product_value const &p) {
+                typename Fst1::Edge const &e1 = p.first.get();
+                typename Fst3::Edge const &e3 = p.second.get();
+
+                std::function<E(typename Fst2::Edge)> f
+                    = [&](typename Fst2::Edge const &e2) {
+                        return E(e1, e2, e3);
+                    };
+                return ebt::map(
+                    ebt::get(fst2_index_,
+                        std::make_tuple(std::get<1>(v),
+                            fst1_.output(e1),
+                            fst3_.input(e3)),
+                        empty),
+                    std::move(f));
+            };
+        return ebt::chain(ebt::map(
+            ebt::product(fst1_.adj(std::get<0>(v)),
+                fst3_.adj(std::get<2>(v))),
+            std::move(g)));
     }
 
     double weight(E const &e) const
@@ -854,15 +929,13 @@ public:
     }
 
 private:
-    SelfLoopFst<Fst1> fst1_;
-    SelfLoopFst<Fst2> fst2_;
-    SelfLoopFst<Fst3> fst3_;
+    Fst1 fst1_;
+    Fst2 fst2_;
+    Fst3 fst3_;
 
-    std::unordered_map<
-        std::tuple<typename SelfLoopFst<Fst2>::Vertex,
-            std::string, std::string>,
-        std::unordered_set<typename SelfLoopFst<Fst2>::Edge>>
-        fst2_index_;
+    std::unordered_map<std::tuple<typename Fst2::Vertex,
+        std::string, std::string>,
+        std::unordered_set<typename Fst2::Edge>> fst2_index_;
 
     void index_fst2()
     {
@@ -876,15 +949,27 @@ private:
 };
 
 template <class Fst1, class Fst2, class Fst3>
+using ProductFst3 = EpsilonFreeProductFst3<SelfLoopFst<Fst1>,
+    SelfLoopFst<Fst2>, SelfLoopFst<Fst3>>;
+
+template <class Fst1, class Fst2, class Fst3>
 ProductFst3<Fst1, Fst2, Fst3>
 compose(Fst1 fst1, Fst2 fst2, Fst3 fst3)
 {
     return ProductFst3<Fst1, Fst2, Fst3>(std::move(fst1),
         std::move(fst2), std::move(fst3));
 }
+
+template <class Fst1, class Fst2, class Fst3>
+EpsilonFreeProductFst3<Fst1, Fst2, Fst3>
+epsilon_free_compose(Fst1 fst1, Fst2 fst2, Fst3 fst3)
+{
+    return EpsilonFreeProductFst3<Fst1, Fst2, Fst3>(std::move(fst1),
+        std::move(fst2), std::move(fst3));
+}
 @
 
-@<test_product3.cc@>=
+@<test_fst_product3.cc@>=
 #include "fst.h"
 #include <iostream>
 
