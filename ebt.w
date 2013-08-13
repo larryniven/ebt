@@ -904,6 +904,24 @@ ostream & operator<<(ostream &os, std::unordered_map<K, V> const &map)
         }), ", ") << "}";
 }
 
+template <class K, class V>
+struct hash<unordered_map<K, V>> {
+    size_t operator()(unordered_map<K, V> const &map) const noexcept
+    {
+        size_t seed = 0;
+
+        hash<K> k_hasher;
+        hash<V> v_hasher;
+
+        for (auto &p: map) {
+            seed ^= ebt::hash_combine(k_hasher(p.first),
+                v_hasher(p.second));
+        }
+
+        return seed;
+    }
+};
+
 }
 @
 
