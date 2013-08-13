@@ -2,7 +2,7 @@
 \usepackage{fullpage}
 
 \title{ebt}
-\author{Hao Tang\\\texttt{haotang@ttic.edu}}
+\author{Hao Tang\\\texttt{haotang@@ttic.edu}}
 
 \begin{document}
 
@@ -23,6 +23,11 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <ostream>
+#include <tuple>
+#include <list>
+#include <cctype>
 
 @<hash combine@>
 
@@ -30,18 +35,32 @@
 @<either@>
 @<option@>
 
+@<upper@>
+@<lower@>
 @<split@>
 @<startswith@>
+@<join@>
+@<format@>
+@<to_string@>
+@<split utf-8 chars@>
 
 @<range@>
+@<zip@>
 @<product@>
 @<map@>
 @<filter@>
 @<chain@>
+@<ngram@>
 
 @<pair utility@>
 @<tuple utility@>
+@<vector utility@>
+@<list utility@>
 @<unordered_map utility@>
+
+@<parser@>
+
+@<sparse vector@>
 
 namespace std {
 
@@ -61,12 +80,66 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 #include "ebt.h"
 #include <algorithm>
 
+@<upper impl@>
+@<lower impl@>
 @<split impl@>
+@<split utf-8 chars impl@>
+
 @<range impl@>
+
+@<sparse vector impl@>
+
+@<parser impl@>
 
 @
 
 \section{String}
+
+@<upper@>=
+namespace ebt {
+
+std::string upper(std::string const &s);
+
+}
+@
+
+@<upper impl@>=
+namespace ebt {
+
+std::string upper(std::string const &s)
+{
+    std::string result;
+    for (auto &c: s) {
+        result += std::toupper(c);
+    }
+    return result;
+}
+
+}
+@
+
+@<lower@>=
+namespace ebt {
+
+std::string lower(std::string const &s);
+
+}
+@
+
+@<lower impl@>=
+namespace ebt {
+
+std::string lower(std::string const &s)
+{
+    std::string result;
+    for (auto &c: s) {
+        result += std::tolower(c);
+    }
+    return result;
+}
+
+}
+@
 
 @<startswith@>=
 namespace ebt {
@@ -153,6 +226,154 @@ std::vector<std::string> split(std::string const &s,
 }
 @
 
+@<join@>=
+namespace ebt {
+
+template <class Iterable>
+std::string join(Iterable &&iter, std::string const &sep)
+{
+    std::ostringstream oss;
+
+    for (auto &i: iter) {
+        oss << i << sep;
+    }
+
+    if (oss.str().size() >= sep.size()) {
+        return oss.str().erase(oss.str().size() - sep.size());
+    } else {
+        return "";
+    }
+}
+
+}
+@
+
+@<test_join.cc@>=
+#include "ebt.h"
+#include <vector>
+#include <iostream>
+
+int main()
+{
+    std::vector<int> a {0, 1, 2};
+    std::cout << ebt::join(a, "-") << std::endl;
+    return 0;
+}
+@
+
+@<format@>=
+namespace ebt {
+
+inline std::ostream & format(std::ostream &os, std::string fmt)
+{
+    return os << fmt;
+}
+
+template <typename T, typename... Args>
+std::ostream & format(std::ostream &os, std::string fmt,
+    T const &t, Args const &... args)
+{
+    unsigned int i;
+
+    for (i = 0; i < fmt.size(); ++i) {
+        if (fmt.at(i) == '{') {
+            if (fmt.at(i + 1) == '{') {
+                ++i;
+                os << '{';
+            } else if (fmt.at(i + 1) == '}') {
+                i += 2;
+                os << t;
+                break;
+            }
+        } else if (fmt.at(i) == '}' && fmt.at(i + 1) == '}') {
+            ++i;
+            os << '}';
+        } else {
+            os << fmt.at(i);
+        }
+    }
+
+    return format(os, fmt.substr(i), args...);
+}
+
+template <typename... Args>
+std::string format(std::string fmt, Args const &... args)
+{
+    std::ostringstream oss;
+    format(oss, std::move(fmt), args...);
+    return oss.str();
+}
+
+}
+@
+
+@<test_format.cc@>=
+#include <iostream>
+#include "ebt.h"
+
+int main()
+{
+    std::cout << ebt::format("{} {} {}", 1, 2, 3) << std::endl;
+    std::cout << ebt::format("{{}}", 1, 2, 3) << std::endl;
+    return 0;
+}
+@
+
+@<to_string@>=
+namespace std {
+
+inline std::string const & to_string(std::string const &s)
+{
+    return s;
+}
+
+}
+@
+
+@<split utf-8 chars@>=
+namespace ebt {
+
+std::vector<std::string> split_utf8_chars(std::string const &s);
+
+}
+@
+
+@<split utf-8 chars impl@>=
+namespace ebt {
+
+std::vector<std::string> split_utf8_chars(std::string const &s)
+{
+    std::vector<std::string> result;
+    std::string tmp;
+    for (auto &c: s) {
+        if ((c & 0xC0) == 0xC0 && !tmp.empty()) {
+            result.push_back(tmp);
+            tmp.clear();
+        }
+        tmp += c;
+    }
+    if (!tmp.empty()) {
+        result.push_back(tmp);
+    }
+    return result;
+}
+
+}
+@
+
+@<test_split_utf8.cc@>=
+#include "ebt.h"
+
+int main()
+{
+    for (auto &s: ebt::split_utf8_chars("這是測試")) {
+        std::cout << s << std::endl;
+    }
+
+    return 0;
+}
+@
+
 \section{Utility}
 
 \subsection{Either}
@@ -213,7 +434,17 @@ struct Either {
         return left_;
     }
 
+    L & left()
+    {
+        return left_;
+    }
+
     R const & right() const
+    {
+        return right_;
+    }
+
+    R & right()
     {
         return right_;
     }
@@ -295,6 +526,11 @@ public:
         return some_.right();
     }
 
+    T & some()
+    {
+        return some_.right();
+    }
+
 private:
     struct None {};
 
@@ -321,12 +557,58 @@ Option<T> none()
 @<uni ref@>=
 namespace ebt {
 
+template <class T, bool is_default_constructible>
+class UniRefImpl;
+
 template <class T>
-class UniRef {
+class UniRef
+    : public UniRefImpl<T, std::is_default_constructible<T>::value> {
+
 public:
     UniRef() = default;
 
-    UniRef(T &&value)
+    UniRef(T t)
+        : UniRefImpl<T, std::is_default_constructible<T>::value>(
+            std::forward<T>(t))
+    {}
+
+    bool operator==(UniRef const &that) const
+    {
+        return this->get() == that.get();
+    }
+};
+
+template <class T>
+class UniRefImpl<T, true> {
+public:
+    UniRefImpl() = default;
+
+    UniRefImpl(T value)
+        : value_(std::move(value))
+    {}
+
+    T const & get() const
+    {
+        return value_;
+    }
+
+    explicit operator bool() const
+    {
+        return true;
+    }
+
+private:
+    T value_;
+};
+
+template <class T>
+class UniRefImpl<T, false> {
+public:
+    UniRefImpl()
+        : value_(nullptr)
+    {}
+
+    UniRefImpl(T value)
         : value_(new T(std::move(value)))
     {}
 
@@ -335,9 +617,9 @@ public:
         return *value_;
     }
 
-    bool operator==(UniRef const &that) const
+    explicit operator bool() const
     {
-        return value_ == that.value_;
+        return value_ != nullptr;
     }
 
 private:
@@ -345,13 +627,13 @@ private:
 };
 
 template <class T>
-class UniRef<T const &> {
+class UniRefImpl<T const &, false> {
 public:
-    UniRef()
+    UniRefImpl()
         : value_(nullptr)
     {}
 
-    UniRef(T const &value)
+    UniRefImpl(T const &value)
         : value_(&value)
     {}
 
@@ -360,14 +642,15 @@ public:
         return *value_;
     }
 
-    bool operator==(UniRef const &that) const
-    {
-        return value_ == that.value_;
-    }
-
 private:
     T const *value_;
 };
+
+template <class T>
+UniRef<T> make_uni(T &&t)
+{
+    return UniRef<T>(std::forward<T>(t));
+}
 
 template <class T>
 std::ostream & operator<<(std::ostream &os, ebt::UniRef<T> const &t)
@@ -382,10 +665,10 @@ namespace std {
 
 template <class T>
 struct hash<ebt::UniRef<T>> {
-    size_t operator()(ebt::UniRef<T> const &that) const
+    size_t operator()(ebt::UniRef<T> const &ref) const noexcept
     {
-        hash<typename std::decay<T>::type const *> hasher;
-        return hasher(&(that.get()));
+        hash<typename std::decay<T>::type> hasher;
+        return hasher(ref.get());
     }
 };
 
@@ -442,30 +725,78 @@ int main()
 @<tuple utility@>=
 namespace std {
 
-template <class T1, class T2, class T3>
-struct hash<tuple<T1, T2, T3>> {
-    size_t operator()(tuple<T1, T2, T3> const &t) const noexcept
+template <size_t i, class... Args>
+struct hash_tuple {
+    size_t& operator()(size_t &seed, tuple<Args...> const &t) const
     {
-        hash<T1> t1_hasher;
-        hash<T2> t2_hasher;
-        hash<T3> t3_hasher;
-
-        size_t seed = 0;
-        ebt::hash_combine(seed, t1_hasher(get<0>(t)));
-        ebt::hash_combine(seed, t2_hasher(get<1>(t)));
-        ebt::hash_combine(seed, t3_hasher(get<2>(t)));
-        return seed;
+        hash_tuple<i-1, Args...> init;
+        hash<typename tuple_element<i, tuple<Args...>>::type> hasher;
+        return ebt::hash_combine(init(seed, t), hasher(get<i>(t)));
     }
 };
 
-template <class T1, class T2, class T3>
-ostream & operator<<(ostream &os, tuple<T1, T2, T3> const &t)
+template <class... Args>
+struct hash_tuple<0, Args...> {
+    size_t & operator()(size_t &seed, tuple<Args...> const &t) const
+    {
+        hash<typename tuple_element<0, tuple<Args...>>::type> hasher;
+        return ebt::hash_combine(seed, hasher(get<0>(t)));
+    }
+};
+
+template <class... Args>
+struct hash<tuple<Args...>> {
+    size_t operator()(tuple<Args...> const &t) const noexcept
+    {
+        size_t seed = 0;
+        return hash_tuple<tuple_size<tuple<Args...>>::value - 1,
+            Args...>()(seed, t);
+    }
+};
+
+template <size_t i, class... Args>
+struct print_tuple {
+    ostream& operator()(ostream &os, tuple<Args...> const &t) const
+    {
+        print_tuple<i-1, Args...> print;
+        print(os, t) << ", " << get<i>(t);
+        if (i == tuple_size<tuple<Args...>>::value - 1) {
+            os << ")";
+        }
+        return os;
+    }
+};
+
+template <class... Args>
+struct print_tuple<0, Args...> {
+    ostream& operator()(ostream &os, tuple<Args...> const &t) const
+    {
+        return os << "(" << get<0>(t);
+    }
+};
+
+template <class... Args>
+ostream & operator<<(ostream &os, tuple<Args...> const &t)
 {
-    os << "(" << get<0>(t) << ", " << get<1>(t) << ", "
-        << get<2>(t) << ")";
-    return os;
+    return print_tuple<tuple_size<tuple<Args...>>::value - 1,
+        Args...>()(os, t);
 }
 
+}
+@
+
+@<test_print_tuple.cc@>=
+#include <iostream>
+#include <tuple>
+#include "ebt.h"
+
+int main()
+{
+    std::tuple<int, int, int> t {0, 1, 2};
+
+    std::cout << t << std::endl;
+
+    return 0;
 }
 @
 
@@ -495,10 +826,48 @@ ostream & operator<<(ostream &os, pair<U, V> const &p)
 }
 @
 
+\subsection{Vector}
+
+@<vector utility@>=
+namespace std {
+
+template <class T>
+ostream & operator<<(ostream &os, std::vector<T> const &vec)
+{
+    return os << "[" << ebt::join(ebt::map(vec,
+            [](T const &t) { return to_string(t); }), ", ")
+        << "]";
+}
+
+}
+@
+
+\subsection{List}
+
+@<list utility@>=
+namespace std {
+
+template <class T>
+ostream & operator<<(ostream &os, std::list<T> const &list)
+{
+    return os << "[" << ebt::join(ebt::map(list,
+            [](T const &t) { return to_string(t); }), ", ")
+        << "]";
+}
+
+}
+@
+
 \subsection{Unordered Map}
 
 @<unordered_map utility@>=
 namespace ebt {
+
+template <class K, class V>
+bool in(K const &key, std::unordered_map<K, V> const &map)
+{
+    return map.find(key) != map.end();
+}
 
 template <class K, class V>
 Option<V> get(std::unordered_map<K, V> const &map, K const &key)
@@ -519,6 +888,20 @@ V const & get(std::unordered_map<K, V> const &map, K const &key,
     } else {
         return map.at(key);
     }
+}
+
+}
+
+namespace std {
+
+template <class K, class V>
+ostream & operator<<(ostream &os, std::unordered_map<K, V> const &map)
+{
+    return os << "{" << ebt::join(ebt::map(map,
+        [](std::pair<const K, V> const &p) {
+            return std::to_string(p.first) + ": "
+                + std::to_string(p.second);
+        }), ", ") << "}";
 }
 
 }
@@ -626,6 +1009,104 @@ unsigned int Range::size() const
 }
 @
 
+\subsection{Zip}
+
+@<zip@>=
+namespace ebt {
+
+template <class Iter1, class Iter2>
+class ZipIterator : public std::iterator<
+    std::input_iterator_tag,
+    std::pair<UniRef<decltype(*std::declval<Iter1>())>,
+        UniRef<decltype(*std::declval<Iter2>())>>> {
+public:
+    ZipIterator(Iter1 iter1, Iter2 iter2)
+        : iter1_(iter1), iter2_(iter2)
+    {}
+
+    ZipIterator & operator++()
+    {
+        ++iter1_;
+        ++iter2_;
+        return *this;
+    }
+
+    bool operator!=(ZipIterator const &that) const
+    {
+        return this->iter1_ != that.iter1_ || this->iter2_ != that.iter2_;
+    }
+
+    typename ZipIterator::value_type & operator*()
+    {
+        value_ = std::make_pair(ebt::make_uni(*iter1_), ebt::make_uni(*iter2_));
+        return value_;
+    }
+
+private:
+    Iter1 iter1_;
+    Iter2 iter2_;
+    typename ZipIterator::value_type value_;
+};
+
+template <class Iterable1, class Iterable2>
+class ZipIterable {
+public:
+    using const_iterator = ZipIterator<
+        typename std::decay<Iterable1>::type::const_iterator,
+        typename std::decay<Iterable2>::type::const_iterator>;
+
+    using value_type = typename const_iterator::value_type;
+
+    ZipIterable(Iterable1 &&iterable1, Iterable2 &&iterable2)
+        : iterable1_(std::forward<Iterable1>(iterable1))
+        , iterable2_(std::forward<Iterable2>(iterable2))
+    {}
+
+    const_iterator begin() const
+    {
+        return const_iterator(iterable1_.begin(), iterable2_.begin());
+    }
+
+    const_iterator end() const
+    {
+        return const_iterator(iterable1_.end(), iterable2_.end());
+    }
+
+private:
+    Iterable1 iterable1_;
+    Iterable2 iterable2_;
+};
+
+template <class Iterable1, class Iterable2>
+ZipIterable<Iterable1, Iterable2> zip(Iterable1 &&iterable1,
+    Iterable2 &&iterable2)
+{
+    return ZipIterable<Iterable1, Iterable2>(
+        std::forward<Iterable1>(iterable1),
+        std::forward<Iterable2>(iterable2));
+}
+
+}
+@
+
+@<test_zip.cc@>=
+#include <vector>
+#include <string>
+#include "ebt.h"
+
+int main()
+{
+    std::vector<int> a {0, 1, 2};
+    std::vector<std::string> b {"a", "b", "c"};
+
+    for (auto &p: ebt::zip(a, b)) {
+        std::cout << p.first.get() << ", " << p.second.get() << std::endl;
+    }
+
+    return 0;
+}
+@
+
 \subsection{Cartesian Product}
 
 We assume an iterator return a reference.  Therefore,
@@ -651,6 +1132,8 @@ class ProductIterator : public std::iterator<std::input_iterator_tag,
     Outer const *outer_iterable_;
     Inner const *inner_iterable_;
 
+    typename ProductIterator::value_type value_;
+
 public:
     ProductIterator() = default;
 
@@ -664,10 +1147,11 @@ public:
         , inner_iterable_(&inner_iterable)
     {}
 
-    typename ProductIterator::value_type operator*()
+    typename ProductIterator::value_type const & operator*()
     {
-        return typename ProductIterator::value_type(
+        value_ = typename ProductIterator::value_type(
             *outer_iter_, *inner_iter_);
+        return value_;
     }
 
     ProductIterator & operator++()
@@ -834,6 +1318,13 @@ class MapIterator : public std::iterator<std::input_iterator_tag,
     typename std::decay<
         decltype(std::declval<Function>()(*std::declval<Iterator>()))
     >::type> {
+
+private:
+    Iterator iter_;
+    Function const *f_;
+    UniRef<decltype(std::declval<Function>()(*std::declval<Iterator>()))>
+        value_;
+
 public:
     MapIterator() = default;
 
@@ -841,10 +1332,10 @@ public:
         : iter_(std::move(iter)), f_(&f)
     {}
 
-    auto operator*() ->
-        decltype(std::declval<Function>()(*std::declval<Iterator>()))
+    auto operator*() -> decltype(value_.get())
     {
-        return (*f_)(*iter_);
+        value_ = make_uni((*f_)(*iter_));
+        return value_.get();
     }
 
     MapIterator & operator++()
@@ -862,10 +1353,6 @@ public:
     {
         return !(*this == that);
     }
-
-private:
-    Iterator iter_;
-    Function const *f_;
 };
 
 template <class Iterable, class Function>
@@ -930,6 +1417,13 @@ namespace ebt {
 template <class Iterator, class Predicate>
 class FilterIterator : public std::iterator<std::input_iterator_tag,
     typename Iterator::value_type> {
+
+private:
+    Iterator iter_;
+    Iterator end_;
+    Predicate const *p_;
+    UniRef<decltype(*std::declval<Iterator>())> value_;
+
 public:
     FilterIterator() = default;
 
@@ -943,9 +1437,10 @@ public:
         }
     }
 
-    auto operator*() -> decltype(*std::declval<Iterator>())
+    auto operator*() -> decltype(value_.get())
     {
-        return *iter_;
+        value_ = make_uni(*iter_);
+        return value_.get();
     }
 
     FilterIterator & operator++()
@@ -968,11 +1463,6 @@ public:
     {
         return !(*this == that);
     }
-
-private:
-    Iterator iter_;
-    Iterator end_;
-    Predicate const *p_;
 };
 
 template <class Iterable, class Predicate>
@@ -1055,13 +1545,16 @@ class ChainIterator : public std::iterator<std::input_iterator_tag,
     using Outer = Iterable;
     using Inner = typename Outer::value_type;
 
-    using SmartInner = UniRef<decltype(
+    using UniInner = UniRef<decltype(
         *std::declval<typename Outer::const_iterator>())>;
 
     Outer const *outer_iterable_;
-    SmartInner inner_iterable_;
+    UniInner inner_iterable_;
     typename Outer::const_iterator outer_iter_;
     typename Inner::const_iterator inner_iter_;
+
+    UniRef<decltype(*std::declval<typename Inner::const_iterator>())>
+        value_;
 
 public:
     ChainIterator() = default;
@@ -1072,7 +1565,7 @@ public:
         , outer_iter_(std::move(outer_iter))
     {
         while (outer_iter_ != outer_iterable_->end()) {
-            inner_iterable_ = SmartInner(*outer_iter_);
+            inner_iterable_ = UniInner(*outer_iter_);
             inner_iter_ = inner_iterable_.get().begin();
             if (inner_iter_ != inner_iterable_.get().end()) {
                 break;
@@ -1081,9 +1574,10 @@ public:
         }
     }
 
-    decltype(*std::declval<typename Inner::const_iterator>()) operator*()
+    auto operator*() -> decltype(value_.get())
     {
-        return *inner_iter_;
+        value_ = make_uni(*inner_iter_);
+        return value_.get();
     }
 
     ChainIterator & operator++()
@@ -1092,7 +1586,7 @@ public:
         if (inner_iter_ == inner_iterable_.get().end()) {
             ++outer_iter_;
             while (outer_iter_ != outer_iterable_->end()) {
-                inner_iterable_ = SmartInner(*outer_iter_);
+                inner_iterable_ = UniInner(*outer_iter_);
                 inner_iter_ = inner_iterable_.get().begin();
                 if (inner_iter_ != inner_iterable_.get().end()) {
                     break;
@@ -1100,6 +1594,7 @@ public:
                 ++outer_iter_;
             }
         }
+        return *this;
     }
 
     bool operator==(ChainIterator const &that) const
@@ -1148,6 +1643,111 @@ ChainIterable<Iterable> chain(Iterable &&iterable)
     return ChainIterable<Iterable>(std::forward<Iterable>(iterable));
 }
 
+template <class Iter1, class Iter2>
+class ChainIterator2 : public std::iterator<std::input_iterator_tag,
+    typename std::decay<decltype(*std::declval<Iter1>())>::type> {
+private:
+    Iter1 iter1_;
+    Iter1 iter1_end_;
+    Iter2 iter2_;
+
+    struct promote {
+        using v1 = decltype(*std::declval<Iter1>());
+        using v2 = decltype(*std::declval<Iter2>());
+
+        using return_type
+            = typename std::conditional<std::is_same<v1, v2>::value, v1,
+                typename std::conditional<
+                    std::is_same<typename std::remove_reference<v2>::type,
+                        v1>::value,
+                    v1, typename std::remove_reference<v1>::type
+                >::type>::type;
+    };
+
+    UniRef<typename std::remove_cv<
+        typename promote::return_type>::type> value_;
+
+public:
+    ChainIterator2() = default;
+
+    ChainIterator2(Iter1 iter1, Iter1 iter1_end, Iter2 iter2)
+        : iter1_(std::move(iter1))
+        , iter1_end_(std::move(iter1_end))
+        , iter2_(std::move(iter2))
+    {}
+
+    ChainIterator2 & operator++()
+    {
+        if (iter1_ != iter1_end_) {
+            ++iter1_;
+        } else {
+            ++iter2_;
+        }
+
+        return *this;
+    }
+
+    auto operator*() -> decltype(value_.get())
+    {
+        if (iter1_ != iter1_end_) {
+            value_ = decltype(value_)(*iter1_);
+        } else {
+            value_ = decltype(value_)(*iter2_);
+        }
+        return value_.get();
+    }
+
+    bool operator==(ChainIterator2 const &that) const
+    {
+        return iter1_ == that.iter1_ && iter2_ == that.iter2_;
+    }
+
+    bool operator!=(ChainIterator2 const &that) const
+    {
+        return !(*this == that);
+    }
+};
+
+template <class Iterable1, class Iterable2>
+class ChainIterable2 {
+private:
+    Iterable1 iterable1_;
+    Iterable2 iterable2_;
+
+public:
+    using const_iterator
+        = ChainIterator2<
+            typename std::decay<Iterable1>::type::const_iterator,
+            typename std::decay<Iterable2>::type::const_iterator>;
+    using value_type = typename const_iterator::value_type;
+
+    ChainIterable2(Iterable1 &&iterable1, Iterable2 &&iterable2)
+        : iterable1_(std::forward<Iterable1>(iterable1))
+        , iterable2_(std::forward<Iterable2>(iterable2))
+    {}
+
+    const_iterator begin() const
+    {
+        return const_iterator(iterable1_.begin(), iterable1_.end(),
+            iterable2_.begin());
+    }
+
+    const_iterator end() const
+    {
+        return const_iterator(iterable1_.end(), iterable1_.end(),
+            iterable2_.end());
+    }
+};
+
+template <class Iterable1, class Iterable2>
+ChainIterable2<Iterable1, Iterable2>
+chain(Iterable1 &&iterable1, Iterable2 &&iterable2)
+{
+    return ChainIterable2<Iterable1, Iterable2>(
+        std::forward<Iterable1>(iterable1),
+        std::forward<Iterable2>(iterable2));
+}
+
 }
 @
 
@@ -1159,7 +1759,8 @@ ChainIterable<Iterable> chain(Iterable &&iterable)
 
 void test1()
 {
-    std::vector<std::vector<std::string>> a {{"a", "aa"}, {"b", "bb"}, {"c", "cc"}};
+    std::vector<std::vector<std::string>> a {
+        {"a", "aa"}, {"b", "bb"}, {"c", "cc"}};
 
     for (auto &e: ebt::chain(a)) {
         std::cout << e << std::endl;
@@ -1195,6 +1796,497 @@ void test3()
 
     for (auto &&e: c) {
         std::cout << e << std::endl;
+    }
+}
+
+void test4()
+{
+    std::vector<int> a {1, 2, 3};
+    std::vector<int> b {4, 5, 6};
+
+    for (auto &e: ebt::chain(a, b)) {
+        std::cout << e << std::endl;
+    }
+}
+
+void test5()
+{
+    std::vector<int> a {1};
+    std::vector<std::string> b { "aa", "aaa" };
+    auto iter = ebt::chain(a, ebt::map(b,
+        [](std::string const &s) { return s.size(); }));
+    for (auto &&e: iter) {
+        std::cout << e << std::endl;
+    }
+}
+
+int main()
+{
+    test1();
+    test2();
+    test3();
+    test4();
+    test5();
+
+    return 0;
+}
+@
+
+\subsection{N-gram}
+
+@<ngram@>=
+namespace ebt {
+
+template <class Iterator>
+class NGramIterator : public std::iterator<
+    std::input_iterator_tag,
+    std::list<typename Iterator::value_type>> {
+
+public:
+    NGramIterator() = default;
+
+    NGramIterator(Iterator iter, Iterator end, int n)
+        : iter_(iter), end_(end), n_(n)
+    {
+        for (int i = 0; i < n_ - 1; ++i) {
+            if (iter_ != end_) {
+                value_.push_back(*iter_);
+                ++iter_;
+            }
+        }
+        if (iter_ != end_) {
+            value_.push_back(*iter_);
+        }
+    }
+
+    NGramIterator & operator++()
+    {
+        if (iter_ != end_) {
+            ++iter_;
+        }
+        if (iter_ != end_) {
+            value_.pop_front();
+            value_.push_back(*iter_);
+        }
+        return *this;
+    }
+
+    std::list<typename Iterator::value_type> const & operator*() const
+    {
+        return value_;
+    }
+
+    bool operator!=(NGramIterator const &that) const
+    {
+        return this->iter_ != that.iter_;
+    }
+
+private:
+    Iterator iter_;
+    Iterator end_;
+    int n_;
+    mutable std::list<typename Iterator::value_type> value_;
+};
+
+template <class Iterable>
+class NGramIterable {
+public:
+    using const_iterator = NGramIterator<
+        typename std::decay<Iterable>::type::const_iterator>;
+    using value_type = typename const_iterator::value_type;
+
+    NGramIterable(Iterable &&iterable, int n)
+        : iterable_(iterable), n_(n)
+    {}
+
+    const_iterator begin() const
+    {
+        return const_iterator(iterable_.begin(), iterable_.end(), n_);
+    }
+
+    const_iterator end() const
+    {
+        return const_iterator(iterable_.end(), iterable_.end(), n_);
+    }
+
+private:
+    Iterable iterable_;
+    int n_;
+};
+
+template <class Iterable>
+NGramIterable<Iterable> ngram(Iterable &&iterable, int n)
+{
+    return NGramIterable<Iterable>(std::forward<Iterable>(iterable), n);
+}
+
+}
+@
+
+@<test_ngram.cc@>=
+#include "ebt.h"
+#include <iostream>
+
+int main()
+{
+    std::vector<std::string> words {"a", "b", "c"};
+
+    for (auto &ngram: ebt::ngram(words, 2)) {
+        std::cout << ngram << std::endl;
+    }
+
+    return 0;
+}
+@
+
+\section{Parsers}
+
+@<parser@>=
+namespace ebt {
+
+class ParserException
+    : public std::exception {
+
+public:
+    ParserException(std::string msg);
+
+    virtual char const * what() const noexcept;
+
+private:
+    std::string msg_;
+};
+
+std::string parse_string(std::istream &is);
+double parse_double(std::istream &is);
+void parse_whitespace(std::istream &is);
+void expect(std::istream &is, char c);
+
+}
+@
+
+@<parser impl@>=
+namespace ebt {
+
+ParserException::ParserException(std::string msg)
+    : msg_(msg)
+{}
+
+char const * ParserException::what() const noexcept
+{
+    return msg_.c_str();
+}
+
+std::string parse_string(std::istream &is)
+{
+    std::string result;
+    expect(is, '"');
+    is.get();
+    char c[2];
+    c[1] = '\0';
+    while (is.peek() != '"') {
+        if (is.peek() == '\\') {
+            is.get();
+            if (is.peek() != '"' && is.peek() != '\\') {
+                throw ParserException(
+                    "can only escape \" and \\");
+            }
+        }
+        c[0] = is.get();
+        result.append(std::string(c));
+    }
+    is.get();
+    return result;
+}
+
+double parse_double(std::istream &is)
+{
+    std::string s = "0123456789+-e.";
+    std::string result;
+    char c[2];
+    c[1] = '\0';
+    c[0] = is.peek();
+    if (s.find(c) == std::string::npos) {
+        throw ParserException("expecting double but found \""
+            + std::string(c) + "\"");
+    }
+    while (s.find(c) != std::string::npos) {
+        is.get();
+        result.append(std::string(c));
+        c[0] = is.peek();
+    }
+    return std::stod(result);
+}
+
+void parse_whitespace(std::istream &is)
+{
+    while (is.peek() == ' ' || is.peek() == '\n'
+            || is.peek() == '\t') {
+        is.get();
+    }
+}
+
+void expect(std::istream &is, char c)
+{
+    char actual = is.peek();
+    if (actual != c) {
+        throw ParserException(std::string("expecting \"") + c
+            + "\" but got \"" + actual + "\"");
+    }
+}
+
+}
+@
+
+\section{Sparse Vector}
+
+@<sparse vector@>=
+namespace ebt {
+
+class SparseVector {
+public:
+    using const_iterator
+        = typename std::unordered_map<std::string, double>::const_iterator;
+    using iterator
+        = typename std::unordered_map<std::string, double>::iterator;
+
+    SparseVector() = default;
+
+    SparseVector(std::initializer_list<
+        std::pair<std::string const, double>> list);
+
+    explicit SparseVector(std::unordered_map<std::string, double> map);
+
+    double& operator()(std::string const &key);
+    double operator()(std::string const &key) const;
+
+    SparseVector & operator+=(SparseVector const &that);
+    SparseVector & operator-=(SparseVector const &that);
+    SparseVector & operator*=(double scalar);
+    SparseVector & operator/=(double scalar);
+
+    const_iterator begin() const;
+    const_iterator end() const;
+
+    iterator begin();
+    iterator end();
+
+    friend double dot(SparseVector const &a, SparseVector const &b);
+    friend bool in(std::string const &key, SparseVector const &v);
+    friend std::ostream & operator<<(std::ostream &os, SparseVector const &v);
+
+private:
+    std::unordered_map<std::string, double> map_;
+};
+
+double dot(SparseVector const &a, SparseVector const &b);
+bool in(std::string const &key, SparseVector const &v);
+
+class SparseVectorParser {
+public:
+    SparseVectorParser(std::istream &is);
+
+    std::pair<std::string, double> parse_key_value();
+    std::unordered_map<std::string, double> parse_unordered_map();
+
+private:
+    std::istream &is_;
+};
+
+std::istream & operator>>(std::istream &is, SparseVector &v);
+std::ostream & operator<<(std::ostream &os, SparseVector &v);
+
+}
+@
+
+@<sparse vector impl@>=
+namespace ebt {
+
+SparseVector::SparseVector(std::initializer_list<
+        std::pair<std::string const, double>> list)
+    : map_(list)
+{}
+
+SparseVector::SparseVector(std::unordered_map<std::string, double> map)
+    : map_(std::move(map))
+{}
+
+double& SparseVector::operator()(std::string const &key)
+{
+    return map_[key];
+}
+
+double SparseVector::operator()(std::string const &key) const
+{
+    if (in(key, map_)) {
+        return map_.at(key);
+    } else {
+        return 0;
+    }
+}
+
+SparseVector & SparseVector::operator+=(SparseVector const &that)
+{
+    for (auto &p: that.map_) {
+        map_[p.first] += p.second;
+    }
+    return *this;
+}
+
+SparseVector & SparseVector::operator-=(SparseVector const &that)
+{
+    for (auto &p: that.map_) {
+        map_[p.first] -= p.second;
+    }
+    return *this;
+}
+
+SparseVector & SparseVector::operator*=(double scalar)
+{
+    for (auto &p: map_) {
+        p.second *= scalar;
+    }
+    return *this;
+}
+
+SparseVector & SparseVector::operator/=(double scalar)
+{
+    for (auto &p: map_) {
+        p.second /= scalar;
+    }
+    return *this;
+}
+
+SparseVector::const_iterator SparseVector::begin() const
+{
+    return map_.begin();
+}
+
+SparseVector::const_iterator SparseVector::end() const
+{
+    return map_.end();
+}
+
+SparseVector::iterator SparseVector::begin()
+{
+    return map_.begin();
+}
+
+SparseVector::iterator SparseVector::end()
+{
+    return map_.end();
+}
+
+double dot(SparseVector const &a, SparseVector const &b)
+{
+    if (b.map_.size() < a.map_.size()) {
+        return dot(b, a);
+    }
+
+    double result = 0;
+    for (auto &p: a) {
+        result += p.second * b(p.first);
+    }
+    return result;
+}
+
+bool in(std::string const &key, SparseVector const &v)
+{
+    return in(key, v.map_);
+}
+
+std::ostream & operator<<(std::ostream &os, SparseVector const &v)
+{
+    return os << v.map_;
+}
+
+}
+
+namespace ebt {
+
+SparseVectorParser::SparseVectorParser(std::istream &is)
+    : is_(is)
+{}
+
+std::pair<std::string, double>
+SparseVectorParser::parse_key_value()
+{
+    std::string key = parse_string(is_);
+    expect(is_, ':');
+    is_.get();
+    parse_whitespace(is_);
+    double value = parse_double(is_);
+    return std::make_pair(key, value);
+}
+
+std::unordered_map<std::string, double>
+SparseVectorParser::parse_unordered_map()
+{
+    std::unordered_map<std::string, double> result;
+
+    expect(is_, '{');
+    is_.get();
+    parse_whitespace(is_);
+    while (is_.peek() != '}') {
+        std::pair<std::string, double> p = parse_key_value();
+        result[p.first] = p.second;
+        if (is_.peek() == ',') {
+            is_.get();
+        }
+        parse_whitespace(is_);
+    }
+    is_.get();
+
+    return result;
+}
+
+std::istream & operator>>(std::istream &is, SparseVector &v)
+{
+    v = SparseVector(SparseVectorParser(is).parse_unordered_map());
+    return is;
+}
+
+}
+@
+
+@<test_sparse_vector.cc@>=
+#include <iostream>
+#include <sstream>
+#include "ebt.h"
+
+void test1()
+{
+    ebt::SparseVector v {{"a", 1}, {"b", 2}};
+
+    v *= 3;
+
+    for (auto &p: v) {
+        std::cout << p << std::endl;
+    }
+}
+
+void test2()
+{
+    std::istringstream iss("{}");
+
+    ebt::SparseVector v;
+
+    iss >> v;
+
+    for (auto &p: v) {
+        std::cout << p << std::endl;
+    }
+}
+
+void test3()
+{
+    std::istringstream iss("{'a': 1, 'b': 2}");
+
+    ebt::SparseVector v;
+
+    iss >> v;
+
+    for (auto &p: v) {
+        std::cout << p << std::endl;
     }
 }
 

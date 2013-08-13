@@ -9,17 +9,26 @@
 \newtheorem{theorem}{Theorem}
 
 \title{Finite State Transducers}
-\author{Hao Tang\\\texttt{haotang@ttic.edu}}
+\author{Hao Tang\\\texttt{haotang@@ttic.edu}}
 \begin{document}
 
 \maketitle
 
-\section{Finite State Transducers}
+\tableofcontents
+
+\section{Finite State Transducer (FST)}
 
 \subsection{Graph}
 
-A graph $G$ is a pair $(V, E)$ where $E \subseteq V \times V$.
-Let $\text{adj}(u) = \{(u, v) \in E \mid v \in V\}$.
+A graph $G$ is a four tuple $(V, E, tail, head)$, where
+$V$ is the vertex set, $E$ is the edge set, $tail: E \to V$
+is a function that maps an edge to its tail vertex,
+and $head: E \to V$ is a function that maps an edge
+to its head vertex.  Representing a graph this way
+instead of defining $E$ as a subset of $V \times V$
+allow us to represent simple graphs and multigraphs
+in a consistent way.  We will encounter multigraphs
+when we define finite finite state transducers.
 
 @<graph data@>=
 template <class V, class E>
@@ -30,6 +39,11 @@ struct GraphData {
     std::unordered_map<E, V> head;
 };
 @
+
+We wrap a set of commonly used functions in a class
+for convenience.  This class also creates an adjacency
+list upon receiving the graph data, and hence implements
+the function $adj(u) = \{e \in E \mid tail(e) = u\}$.
 
 @<graph@>=
 template <class V, class E, class Data=GraphData<V, E>>
@@ -121,7 +135,13 @@ public:
 };
 @
 
-\subsection{FST}
+\subsection{Finite State Transducer}
+
+Let $\Sigma$ be a set of symbols or alphabet.
+A finite state transducer (FST) is a weighted graph with
+two additional functions $input: E \to \Sigma^*$ and
+$output: E \to \Sigma^*$, a starting vertex, and an ending
+vertex.
 
 @<fst data@>=
 template <class V, class E>
@@ -369,7 +389,6 @@ private:
     std::unordered_map<int, V> loop_end_points_;
     std::unordered_map<V, int> loops_;
     std::string epsilon_;
-    mutable std::unordered_map<V, std::unordered_set<E>> adj_cache_;
 
 public:
     SelfLoopFst(Fst fst)
@@ -419,17 +438,25 @@ public:
         }
     }
 
-    std::unordered_set<E> const & adj(V const &v) const
+    struct Adj {
+        using iterable = decltype(
+            std::declval<Fst>().adj(std::declval<V>()));
+
+        using return_type
+            = ebt::ChainIterable2<std::vector<E>,
+                ebt::MapIterable<iterable,
+                    std::function<E(typename Fst::Edge)>>>;
+    };
+
+    typename Adj::return_type adj(V const &v) const
     {
-        if (adj_cache_.find(v) == adj_cache_.end()) {
-            std::unordered_set<E> result;
-            for (auto &e: fst_.adj(v)) {
-                result.insert(E(ebt::left(e)));
-            }
-            result.insert(E(ebt::right(loops_.at(v))));
-            adj_cache_[v] = std::move(result);
-        }
-        return adj_cache_.at(v);
+        std::function<E(typename Fst::Edge)> f
+            = [](typename Fst::Edge e)
+                { return E(ebt::left(std::move(e))); };
+
+        return ebt::chain(std::vector<E>
+            { E(ebt::right(loops_.at(v))) },
+            ebt::map(fst_.adj(v), std::move(f)));
     }
 
     double weight(E const &e) const
@@ -589,7 +616,7 @@ public:
             };
 
         return ebt::filter(ebt::product(fst1_.adj(v.first),
-            fst2_.adj(v.second)), f);
+            fst2_.adj(v.second)), std::move(f));
     }
 
     double weight(E const &e) const
@@ -669,7 +696,7 @@ int main()
         0
     });
 
-    auto fst = compose(fst1, fst2);
+    auto fst = epsilon_free_compose(fst1, fst2);
 
     std::unordered_map<typename decltype(fst)::Vertex, double> d;
     std::unordered_map<typename decltype(fst)::Vertex,
@@ -747,28 +774,46 @@ public:
             fst3_.head(std::get<2>(e)));
     }
 
-    std::unordered_set<E> const & adj(V const &v) const
+    struct Adj {
+        using adj1 = decltype(std::declval<Fst1>().adj(
+            std::get<0>(std::declval<V>())));
+        using adj3 = decltype(std::declval<Fst3>().adj(
+            std::get<2>(std::declval<V>())));
+        using product = ebt::ProductIterable<adj1, adj3>;
+        using product_value = typename product::value_type;
+        using edge_iterable = ebt::MapIterable<
+            std::unordered_set<typename Fst2::Edge> const &,
+            std::function<E(typename Fst2::Edge)>>;
+        using iterable_set = ebt::MapIterable<product,
+            std::function<edge_iterable(product_value const &p)>>;
+        using return_type = ebt::ChainIterable<iterable_set>;
+    };
+
+    typename Adj::return_type adj(V const &v) const
     {
-        if (adj_cache_.find(v) == adj_cache_.end()) {
-            std::unordered_set<E> result;
-            for (auto &e1: fst1_.adj(std::get<0>(v))) {
-                for (auto &e3: fst3_.adj(std::get<2>(v))) {
-                    if (fst2_index_.find(std::make_tuple(
-                        std::get<1>(v), fst1_.output(e1),
-                        fst3_.input(e3))) == fst2_index_.end()) {
-                            continue;
-                    }
-                    auto &edges = fst2_index_.at(std::make_tuple(
-                        std::get<1>(v), fst1_.output(e1),
-                        fst3_.input(e3)));
-                    for (auto &e2: edges) {
-                        result.insert(std::make_tuple(e1, e2, e3));
-                    }
-                }
-            }
-            adj_cache_[v] = std::move(result);
-        }
-        return adj_cache_.at(v);
+        std::unordered_set<typename Fst2::Edge> empty;
+        std::function<typename Adj::edge_iterable(
+                typename Adj::product_value const &)> g
+            = [&, empty](typename Adj::product_value const &p) {
+                typename Fst1::Edge const &e1 = p.first.get();
+                typename Fst3::Edge const &e3 = p.second.get();
+
+                std::function<E(typename Fst2::Edge)> f
+                    = [&](typename Fst2::Edge const &e2) {
+                        return E(e1, e2, e3);
+                    };
+                return ebt::map(
+                    ebt::get(fst2_index_,
+                        std::make_tuple(std::get<1>(v),
+                            fst1_.output(e1),
+                            fst3_.input(e3)),
+                        empty),
+                    std::move(f));
+            };
+        return ebt::chain(ebt::map(
+            ebt::product(fst1_.adj(std::get<0>(v)),
+                fst3_.adj(std::get<2>(v))),
+            std::move(g)));
     }
 
     double weight(E const &e) const
@@ -808,8 +853,6 @@ private:
     std::unordered_map<std::tuple<typename Fst2::Vertex,
         std::string, std::string>,
         std::unordered_set<typename Fst2::Edge>> fst2_index_;
-
-    mutable std::unordered_map<V, std::unordered_set<E>> adj_cache_;
 
     void index_fst2()
     {
