@@ -24,11 +24,17 @@ struct Vertex {
     T value;
 };
 
+template <class T>
+bool operator==(Vertex<T> const &v1, Vertex<T> const &v2)
+{
+    return v1.value == v2.value;
+}
+
 namespace std {
 
 template <class T>
 struct hash<Vertex<T>> {
-    inline size_t operator()(Vertex<T> const &v) const noexcept
+    size_t operator()(Vertex<T> const &v) const noexcept
     {
         hash<T> hasher;
         return hasher(v.value);
@@ -46,13 +52,19 @@ namespace std {
 
 template <class T>
 struct hash<Edge<T>> {
-    inline size_t operator()(Edge<T> const &e) const noexcept
+    size_t operator()(Edge<T> const &e) const noexcept
     {
         hash<T> hasher;
         return hasher(e.value);
     }
 };
 
+}
+
+template <class T>
+bool operator==(Edge<T> const &e1, Edge<T> const &e2)
+{
+    return e1.value == e2.value;
 }
 @
 

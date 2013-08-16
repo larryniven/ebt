@@ -23,11 +23,6 @@ public:
         std::string label;
     };
 
-    struct LatticeData {
-        std::string id;
-        std::vector<EdgeData> edges;
-    };
-
     LatticeParser(std::istream &is);
 
     ebt::Option<FstData<Vertex<int>, Edge<int>>>
@@ -63,7 +58,6 @@ ebt::Option<FstData<Vertex<int>, Edge<int>>>
 LatticeParser::parse_utterance()
 {
     std::string line;
-    typename LatticeParser::LatticeData utt;
     FstData<Vertex<int>, Edge<int>> fst;
 
     std::getline(is_, line);
@@ -72,10 +66,7 @@ LatticeParser::parse_utterance()
         return ebt::none<FstData<Vertex<int>, Edge<int>>>();
     }
 
-    utt.id = std::move(line);
-
-    std::unordered_map<int, std::vector<Edge<int>>> tails;
-    std::unordered_map<int, std::vector<Edge<int>>> heads;
+    std::unordered_map<int, Vertex<int>> v_at_time;
 
     while (true) {
         std::getline(is_, line);
@@ -95,10 +86,26 @@ LatticeParser::parse_utterance()
                 + std::to_string(parts.size()));
         }
 
-        typename LatticeParser::EdgeData e {std::stoi(parts[0]),
-            std::stoi(parts[1]), parts[2]};
+        Edge<int> e { int(fst.edges.size()) };
+        fst.edges.insert(e);
 
-        utt.edges.push_back(e);
+        if (!ebt::in(std::stoi(parts[0]), v_at_time)) {
+            Vertex<int> v { int(fst.vertices.size()) };
+            fst.vertices.insert(v);
+            v_at_time[std::stoi(parts[0])] = v;
+        }
+
+        if (!ebt::in(std::stoi(parts[1]) + 1, v_at_time)) {
+            Vertex<int> v { int(fst.vertices.size()) };
+            fst.vertices.insert(v);
+            v_at_time[std::stoi(parts[1]) + 1] = v;
+        }
+
+        fst.tail[e] = v_at_time.at(std::stoi(parts[0]));
+        fst.head[e] = v_at_time.at(std::stoi(parts[1]) + 1);
+        fst.input[e] = parts[2];
+        fst.output[e] = parts[2];
+        fst.weight[e] = 0;
     }
 
     return ebt::some(fst);
@@ -111,7 +118,8 @@ LatticeParser::parse()
         result;
 
     while (true) {
-        ebt::Option<FstData<Vertex<int>, Edge<int>>> utt = parse_utterance();
+        ebt::Option<FstData<Vertex<int>, Edge<int>>> utt
+            = parse_utterance();
         if (utt.has_none()) {
             break;
         }
