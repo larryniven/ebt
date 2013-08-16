@@ -205,7 +205,6 @@ template <class G, class Begin, class End>
 void depth_first_search(G const &g, typename G::Vertex root,
     Begin begin_traverse, End end_traverse)
 {
-    typedef typename G::Vertex V;
     typedef typename G::Edge E;
 
     std::stack<E> stack;

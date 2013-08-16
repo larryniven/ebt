@@ -58,10 +58,13 @@ scarf.pdf: scarf.tex
 	pdflatex scarf
 	pdflatex scarf
 
-# C++ 
+# C++
 
 fst.h: fst.w
 	tangle.py fst.w fst.h > fst.h
+
+fst.cc: fst.w
+	tangle.py fst.w fst.cc > fst.cc
 
 ebt.cc: ebt.w
 	tangle.py ebt.w ebt.cc > ebt.cc
@@ -158,7 +161,7 @@ test_shortest: test_shortest.o libebt.a
 test_fst_product2: test_fst_product2.o ebt.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_fst_product3: test_fst_product3.o ebt.o
+test_fst_product3: test_fst_product3.o ebt.o fst.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 test_zip: test_zip.o ebt.o

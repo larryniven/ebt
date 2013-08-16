@@ -2323,7 +2323,7 @@ void test2()
 
 void test3()
 {
-    std::istringstream iss("{'a': 1, 'b': 2}");
+    std::istringstream iss("{\"a\": 1, \"b\": 2}");
 
     ebt::SparseVector v;
 
