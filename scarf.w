@@ -17,12 +17,6 @@
 
 class LatticeParser {
 public:
-    struct EdgeData {
-        int start;
-        int end;
-        std::string label;
-    };
-
     LatticeParser(std::istream &is);
 
     ebt::Option<FstData<Vertex<int>, Edge<int>>>
