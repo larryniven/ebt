@@ -13,24 +13,27 @@
 #include <string>
 #include <exception>
 #include "ebt.h"
+#include "fst.h"
 
 class LatticeParser {
 public:
-    struct Edge {
+    struct EdgeData {
         int start;
         int end;
         std::string label;
     };
 
-    struct Lattice {
+    struct LatticeData {
         std::string id;
-        std::vector<Edge> edges;
+        std::vector<EdgeData> edges;
     };
 
     LatticeParser(std::istream &is);
 
-    ebt::Option<Lattice> parse_utterance();
-    std::vector<Lattice> parse();
+    ebt::Option<FstData<Vertex<int>, Edge<int>>>
+        parse_utterance();
+    std::vector<FstData<Vertex<int>, Edge<int>>>
+        parse();
 
 private:
     std::string line_;
@@ -56,19 +59,23 @@ LatticeParser::LatticeParser(std::istream &is)
 {
 }
 
-ebt::Option<typename LatticeParser::Lattice>
+ebt::Option<FstData<Vertex<int>, Edge<int>>>
 LatticeParser::parse_utterance()
 {
     std::string line;
-    typename LatticeParser::Lattice utt;
+    typename LatticeParser::LatticeData utt;
+    FstData<Vertex<int>, Edge<int>> fst;
 
     std::getline(is_, line);
 
     if (!is_) {
-        return ebt::none<typename LatticeParser::Lattice>();
+        return ebt::none<FstData<Vertex<int>, Edge<int>>>();
     }
 
     utt.id = std::move(line);
+
+    std::unordered_map<int, std::vector<Edge<int>>> tails;
+    std::unordered_map<int, std::vector<Edge<int>>> heads;
 
     while (true) {
         std::getline(is_, line);
@@ -88,22 +95,23 @@ LatticeParser::parse_utterance()
                 + std::to_string(parts.size()));
         }
 
-        typename LatticeParser::Edge e {std::stoi(parts[0]),
+        typename LatticeParser::EdgeData e {std::stoi(parts[0]),
             std::stoi(parts[1]), parts[2]};
 
         utt.edges.push_back(e);
     }
 
-    return ebt::some(utt);
+    return ebt::some(fst);
 }
 
-std::vector<typename LatticeParser::Lattice> LatticeParser::parse()
+std::vector<FstData<Vertex<int>, Edge<int>>>
+LatticeParser::parse()
 {
-    std::vector<typename LatticeParser::Lattice> result;
+    std::vector<FstData<Vertex<int>, Edge<int>>>
+        result;
 
     while (true) {
-        ebt::Option<typename LatticeParser::Lattice> utt
-            = parse_utterance();
+        ebt::Option<FstData<Vertex<int>, Edge<int>>> utt = parse_utterance();
         if (utt.has_none()) {
             break;
         }
@@ -128,8 +136,8 @@ int main(int argc, char *argv[])
     std::ifstream ifs(argv[1]);
     LatticeParser parser(ifs);
 
-    std::vector<typename LatticeParser::Lattice> utts
-        = parser.parse();
+    std::vector<FstData<Vertex<int>, Edge<int>>>
+        utts = parser.parse();
     std::cout << utts.size() << std::endl;
 
     return 0;

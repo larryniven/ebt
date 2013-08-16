@@ -18,6 +18,44 @@
 
 \section{Finite State Transducer (FST)}
 
+@<vertex and edge@>=
+template <class T>
+struct Vertex {
+    T value;
+};
+
+namespace std {
+
+template <class T>
+struct hash<Vertex<T>> {
+    inline size_t operator()(Vertex<T> const &v) const noexcept
+    {
+        hash<T> hasher;
+        return hasher(v.value);
+    }
+};
+
+}
+
+template <class T>
+struct Edge {
+    T value;
+};
+
+namespace std {
+
+template <class T>
+struct hash<Edge<T>> {
+    inline size_t operator()(Edge<T> const &e) const noexcept
+    {
+        hash<T> hasher;
+        return hasher(e.value);
+    }
+};
+
+}
+@
+
 \subsection{Graph}
 
 A graph $G$ is a four tuple $(V, E, tail, head)$, where
@@ -1093,6 +1131,7 @@ int main()
 #include <tuple>
 #include <list>
 
+@<vertex and edge@>
 @<graph data@>
 @<graph@>
 @<depth first search@>
