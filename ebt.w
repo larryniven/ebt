@@ -1,8 +1,25 @@
+% English Breakfast Tea (EBT) C++ Library
+% Copyright (C) 2013  Hao Tang
+% 
+% EBT is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% EBT is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 \documentclass{article}
 \usepackage{fullpage}
 
 \title{ebt}
 \author{Hao Tang\\\texttt{haotang@@ttic.edu}}
+\date{Version 0.1}
 
 \begin{document}
 
@@ -36,6 +53,7 @@
 @<either@>
 @<option@>
 
+@<escapeseq@>
 @<upper@>
 @<lower@>
 @<split@>
@@ -82,6 +100,7 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 #include "ebt.h"
 #include <algorithm>
 
+@<escapeseq impl@>
 @<upper impl@>
 @<lower impl@>
 @<split impl@>
@@ -96,6 +115,39 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 @
 
 \section{String}
+
+@<escapeseq@>=
+namespace ebt {
+
+std::string escapeseq(std::string const &s);
+
+}
+@
+
+@<escapeseq impl@>=
+namespace ebt {
+
+std::string escapeseq(std::string const &s)
+{
+    std::string result;
+
+    for (auto c: s) {
+        if (c == '\\') {
+            result += '\\';
+            result += '\\';
+        } else if (c == '"') {
+            result += '\\';
+            result += '\"';
+        } else {
+            result += c;
+        }
+    }
+
+    return result;
+}
+
+}
+@
 
 @<upper@>=
 namespace ebt {
@@ -901,8 +953,9 @@ ostream & operator<<(ostream &os, std::unordered_map<K, V> const &map)
 {
     return os << "{" << ebt::join(ebt::map(map,
         [](std::pair<const K, V> const &p) {
-            return std::to_string(p.first) + ": "
-                + std::to_string(p.second);
+            using std::to_string;
+            return to_string(p.first) + ": "
+                + to_string(p.second);
         }), ", ") << "}";
 }
 
@@ -2137,7 +2190,7 @@ private:
 };
 
 std::istream & operator>>(std::istream &is, SparseVector &v);
-std::ostream & operator<<(std::ostream &os, SparseVector &v);
+std::ostream & operator<<(std::ostream &os, SparseVector const &v);
 
 }
 @
@@ -2240,7 +2293,11 @@ bool in(std::string const &key, SparseVector const &v)
 
 std::ostream & operator<<(std::ostream &os, SparseVector const &v)
 {
-    return os << v.map_;
+    return os << "{" << ebt::join(ebt::map(v,
+        [](std::pair<const std::string, double> const &p) {
+            return ebt::format("\"{}\": {}", escapeseq(p.first),
+                p.second);
+        }), ", ") << "}";
 }
 
 }
