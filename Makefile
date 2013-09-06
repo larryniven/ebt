@@ -2,11 +2,7 @@ CXXFLAGS += -std=c++11 -Wall
 TANGLE = tangle.py
 WEAVE = weave.py
 
-tests = test_dfs \
-    test_shortest \
-    test_fst_product2 \
-    test_fst_product3 \
-    test_zip \
+tests = test_zip \
     test_product \
     test_map \
     test_filter \
@@ -21,52 +17,31 @@ tests = test_dfs \
 
 .PHONY: all clean doc check
 
-all: libebt.a scarf
+all: libebt.a
 
 check: all $(tests)
 
-doc: ebt.pdf fst.pdf scarf.pdf
+doc: ebt.pdf
 
 clean:
 	-rm *.o
 	-rm *.h *.cc
 	-rm *.tex *.log *.aux *.pdf *.toc
 	-rm libebt.a
-	-rm scarf
 	-rm $(tests)
 
 # TeX
 
-fst.tex: fst.w
-	$(WEAVE) fst.w > fst.tex
-
 ebt.tex: ebt.w
 	$(WEAVE) ebt.w > ebt.tex
 
-scarf.tex: scarf.w
-	$(WEAVE) scarf.w > scarf.tex
-
 # PDF
-
-fst.pdf: fst.tex
-	pdflatex fst
-	pdflatex fst
 
 ebt.pdf: ebt.tex
 	pdflatex ebt
 	pdflatex ebt
 
-scarf.pdf: scarf.tex
-	pdflatex scarf
-	pdflatex scarf
-
 # C++
-
-fst.h: fst.w
-	$(TANGLE) fst.w fst.h > fst.h
-
-fst.cc: fst.w
-	$(TANGLE) fst.w fst.cc > fst.cc
 
 ebt.cc: ebt.w
 	$(TANGLE) ebt.w ebt.cc > ebt.cc
@@ -74,35 +49,12 @@ ebt.cc: ebt.w
 ebt.h: ebt.w
 	$(TANGLE) ebt.w ebt.h > ebt.h
 
-scarf.h: scarf.w
-	$(TANGLE) scarf.w scarf.h > scarf.h
-
-scarf.cc: scarf.w
-	$(TANGLE) scarf.w scarf.cc > scarf.cc
-
-scarf.o: scarf.h
 ebt.o: ebt.h
-fst.o: fst.h
 
-libebt.a: ebt.o fst.o
+libebt.a: ebt.o
 	$(AR) rcs $@ $^
 
-scarf: scarf.o libebt.a
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
 # Tests
-
-test_dfs.cc: fst.w
-	$(TANGLE) fst.w test_dfs.cc > test_dfs.cc
-
-test_shortest.cc: fst.w
-	$(TANGLE) fst.w test_shortest.cc > test_shortest.cc
-
-test_fst_product2.cc: fst.w
-	$(TANGLE) fst.w test_fst_product2.cc > test_fst_product2.cc
-
-test_fst_product3.cc: fst.w
-	$(TANGLE) fst.w test_fst_product3.cc > test_fst_product3.cc
 
 test_zip.cc: ebt.w
 	$(TANGLE) ebt.w test_zip.cc > test_zip.cc
@@ -140,10 +92,6 @@ test_print_tuple.cc: ebt.w
 test_ngram.cc: ebt.w
 	$(TANGLE) ebt.w test_ngram.cc > test_ngram.cc
 
-test_dfs.o: fst.h ebt.h
-test_shortest.o: fst.h ebt.h
-test_product2.o: fst.h ebt.h
-test_product3.o: fst.h ebt.h
 test_zip.o: ebt.h
 test_product.o: ebt.h
 test_map.o: ebt.h
@@ -154,18 +102,6 @@ test_join.o: ebt.h
 test_format.o: ebt.h
 test_split_utf8.o: ebt.h
 test_ngram.o: ebt.h
-
-test_dfs: test_dfs.o libebt.a
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
-test_shortest: test_shortest.o libebt.a
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
-test_fst_product2: test_fst_product2.o ebt.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
-test_fst_product3: test_fst_product3.o ebt.o fst.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
 
 test_zip: test_zip.o ebt.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
