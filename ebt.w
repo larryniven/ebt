@@ -45,7 +45,12 @@
 #include <tuple>
 #include <list>
 #include <cctype>
+#include <cmath>
 #include <unordered_set>
+#include <ctime>
+#include <cassert>
+
+@<assert@>
 
 @<hash combine@>
 
@@ -57,11 +62,15 @@
 @<upper@>
 @<lower@>
 @<split@>
+@<replace@>
 @<startswith@>
+@<endswith@>
 @<join@>
 @<format@>
 @<to_string@>
 @<split utf-8 chars@>
+
+@<parser@>
 
 @<range@>
 @<zip@>
@@ -78,9 +87,13 @@
 @<unordered_map utility@>
 @<unordered_set utility@>
 
-@<parser@>
+@<max heap@>
 
 @<sparse vector@>
+
+@<timer@>
+
+@<argument parser@>
 
 namespace std {
 
@@ -100,18 +113,69 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 #include "ebt.h"
 #include <algorithm>
 
+@<assert impl@>
+
 @<escapeseq impl@>
 @<upper impl@>
 @<lower impl@>
 @<split impl@>
+@<replace impl@>
 @<split utf-8 chars impl@>
 
 @<range impl@>
-
 @<sparse vector impl@>
-
 @<parser impl@>
 
+@<timer impl@>
+
+@<argument parser impl@>
+
+@
+
+\section{Assert}
+
+@<assert@>=
+namespace ebt {
+
+void assert_true(bool condition, std::string msg);
+
+template <class T, class U = T>
+typename std::enable_if<!std::is_floating_point<T>::value, void>::type
+assert_equals(T const &expected, U const &actual)
+{
+    if (expected != actual) {
+        std::cerr << "expected: <" << expected << "> but was: <"
+            << actual << ">" << std::endl;
+        exit(1);
+    }
+}
+
+template <class T, class U = T>
+typename std::enable_if<std::is_floating_point<T>::value, void>::type
+assert_equals(T expected, U actual)
+{
+    if (std::fabs(expected - actual) > std::fabs(expected) * 1e-6) {
+        std::cerr << "expected: <" << expected << "> but was: <"
+            << actual << ">" << std::endl;
+        exit(1);
+    }
+}
+
+}
+@
+
+@<assert impl@>=
+namespace ebt {
+
+void assert_true(bool condition, std::string msg)
+{
+    if (!condition) {
+        std::cerr << msg << std::endl;
+        exit(1);
+    }
+}
+
+}
 @
 
 \section{String}
@@ -206,6 +270,17 @@ inline bool startswith(std::string const &s, std::string const &prefix)
 }
 @
 
+@<endswith@>=
+namespace ebt {
+
+inline bool endswith(std::string const &s, std::string const &suffix)
+{
+    return s.find(suffix) == s.size() - suffix.size();
+}
+
+}
+@
+
 @<split@>=
 namespace ebt {
 
@@ -275,6 +350,28 @@ std::vector<std::string> split(std::string const &s,
     std::string sep)
 {
     return Split(s, sep).compute();
+}
+
+}
+@
+
+@<replace@>=
+namespace ebt {
+
+std::string replace(std::string s, std::string pattern,
+    std::string replacement);
+
+}
+@
+
+@<replace impl@>=
+namespace ebt {
+
+std::string replace(std::string s, std::string pattern,
+    std::string replacement)
+{
+    std::vector<std::string> parts = ebt::split(s, pattern);
+    return ebt::join(parts, replacement);
 }
 
 }
@@ -379,6 +476,14 @@ namespace std {
 inline std::string const & to_string(std::string const &s)
 {
     return s;
+}
+
+template <class U, class V>
+std::string to_string(std::pair<U, V> const &p)
+{
+    std::ostringstream oss;
+    oss << p;
+    return oss.str();
 }
 
 }
@@ -641,6 +746,11 @@ public:
         : value_(std::move(value))
     {}
 
+    T & get()
+    {
+        return value_;
+    }
+
     T const & get() const
     {
         return value_;
@@ -665,6 +775,11 @@ public:
     UniRefImpl(T value)
         : value_(new T(std::move(value)))
     {}
+
+    T & get()
+    {
+        return *value_;
+    }
 
     T const & get() const
     {
@@ -886,11 +1001,79 @@ ostream & operator<<(ostream &os, pair<U, V> const &p)
 namespace std {
 
 template <class T>
+struct hash<vector<T>> {
+    size_t operator()(vector<T> const &v) const noexcept
+    {
+        size_t result = 0;
+        hash<T> e_hasher;
+        for (auto &e: v) {
+            ebt::hash_combine(result, e_hasher(e));
+        }
+        return result;
+    }
+};
+
+template <class T>
 ostream & operator<<(ostream &os, std::vector<T> const &vec)
 {
     return os << "[" << ebt::join(ebt::map(vec,
             [](T const &t) { return to_string(t); }), ", ")
         << "]";
+}
+
+template <class T>
+string to_string(vector<T> const &vec)
+{
+    std::ostringstream oss;
+    oss << vec;
+    return oss.str();
+}
+
+}
+
+namespace ebt {
+
+template <class T>
+class VectorParser {
+public:
+    VectorParser(std::istream &is)
+        : is_(is)
+    {}
+
+    std::vector<T> parse()
+    {
+        std::vector<T> result;
+        expect(is_, '[');
+        is_.get();
+        if (is_.peek() != ']') {
+            while (1) {
+                T t;
+                ebt::parse(is_, t);
+                result.push_back(std::move(t));
+                if (is_.peek() == ',') {
+                    expect(is_, ',');
+                    is_.get();
+                    expect(is_, ' ');
+                    is_.get();
+                } else {
+                    break;
+                }
+            }
+        }
+        expect(is_, ']');
+        is_.get();
+        return result;
+    }
+
+private:
+    std::istream &is_;
+};
+
+template <class T>
+std::istream & parse(std::istream &is, std::vector<T> &result)
+{
+    result = VectorParser<T>(is).parse();
+    return is;
 }
 
 }
@@ -1002,7 +1185,115 @@ struct hash<unordered_set<T>> {
 };
 
 }
+
+namespace ebt {
+
+template <class T>
+bool in(T const &t, std::unordered_set<T> const &set)
+{
+    return set.find(t) != set.end();
+}
+
+}
 @
+
+\subsection{Max Heap}
+
+@<max heap@>=
+namespace ebt {
+
+template <class V, class K>
+class MaxHeap {
+private:
+    std::vector<std::pair<V, K>> data_;
+    std::unordered_map<V, int> index_;
+
+    int parent(int i)
+    {
+        return i / 2;
+    }
+
+    int left(int i)
+    {
+        return 2 * i;
+    }
+
+    int right(int i)
+    {
+        return 2 * i + 1;
+    }
+
+    MaxHeap & max_heapify(int index)
+    {
+        int i = index;
+        while (0 <= i && i < data_.size()) {
+            int max = i;
+            if (left(i) < data_.size()
+                    && data_[left(i)].second > data_[max].second) {
+                max = left(i);
+            }
+            if (right(i) < data_.size()
+                    && data_[right(i)].second > data_[max].second) {
+                max = right(i);
+            }
+
+            if (max == i) {
+                break;
+            } else {
+                using std::swap;
+                swap(index_[data_[i].first], index_[data_[max].first]);
+                swap(data_[i], data_[max]);
+                i = max;
+            }
+        }
+        return *this;
+    }
+
+public:
+    int size() const
+    {
+        return data_.size();
+    }
+
+    MaxHeap & insert(V t, K value)
+    {
+        data_.resize(data_.size() + 1);
+        index_[t] = data_.size() - 1;
+        data_.back() = std::make_pair(t, value);
+        increase_key(t, value);
+        return *this;
+    }
+
+    MaxHeap & increase_key(V t, K value)
+    {
+        int i = index_.at(t);
+        data_[i].second = value;
+        while (0 <= i && i < data_.size()
+                && value > data_[parent(i)].second) {
+            using std::swap;
+            swap(index_[data_[i].first], index_[data_[parent(i)].first]);
+            swap(data_[i], data_[parent(i)]);
+            i = parent(i);
+        }
+        return *this;
+    }
+
+    V extract_max()
+    {
+        V result = std::move(data_.front().first);
+        using std::swap;
+        swap(data_.back(), data_.front());
+        index_[data_.front().first] = 0;
+        index_.erase(result);
+        data_.resize(data_.size() - 1);
+        max_heapify(0);
+        return result;
+    }
+};
+
+}
+@
+
 
 \subsection{Hash}
 
@@ -1130,7 +1421,7 @@ public:
 
     bool operator!=(ZipIterator const &that) const
     {
-        return this->iter1_ != that.iter1_ || this->iter2_ != that.iter2_;
+        return this->iter1_ != that.iter1_ && this->iter2_ != that.iter2_;
     }
 
     typename ZipIterator::value_type & operator*()
@@ -1148,6 +1439,10 @@ private:
 template <class Iterable1, class Iterable2>
 class ZipIterable {
 public:
+    using iterator = ZipIterator<
+        typename std::decay<Iterable1>::type::iterator,
+        typename std::decay<Iterable2>::type::iterator>;
+
     using const_iterator = ZipIterator<
         typename std::decay<Iterable1>::type::const_iterator,
         typename std::decay<Iterable2>::type::const_iterator>;
@@ -1158,6 +1453,16 @@ public:
         : iterable1_(std::forward<Iterable1>(iterable1))
         , iterable2_(std::forward<Iterable2>(iterable2))
     {}
+
+    iterator begin()
+    {
+        return iterator(iterable1_.begin(), iterable2_.begin());
+    }
+
+    iterator end()
+    {
+        return iterator(iterable1_.end(), iterable2_.end());
+    }
 
     const_iterator begin() const
     {
@@ -2054,7 +2359,8 @@ private:
 };
 
 std::string parse_string(std::istream &is);
-double parse_double(std::istream &is);
+std::istream & parse(std::istream &is, int &i);
+std::istream & parse(std::istream &is, double &d);
 void parse_whitespace(std::istream &is);
 void expect(std::istream &is, char c);
 
@@ -2095,7 +2401,27 @@ std::string parse_string(std::istream &is)
     return result;
 }
 
-double parse_double(std::istream &is)
+std::istream & parse(std::istream &is, int &i)
+{
+    std::string s = "0123456789+-";
+    std::string result;
+    char c[2];
+    c[1] = '\0';
+    c[0] = is.peek();
+    if (s.find(c) == std::string::npos) {
+        throw ParserException("expecting double but found \""
+            + std::string(c) + "\"");
+    }
+    while (s.find(c) != std::string::npos) {
+        is.get();
+        result.append(std::string(c));
+        c[0] = is.peek();
+    }
+    i = std::stoi(result);
+    return is;
+}
+
+std::istream & parse(std::istream &is, double &d)
 {
     std::string s = "0123456789+-e.";
     std::string result;
@@ -2111,7 +2437,8 @@ double parse_double(std::istream &is)
         result.append(std::string(c));
         c[0] = is.peek();
     }
-    return std::stod(result);
+    d = std::stod(result);
+    return is;
 }
 
 void parse_whitespace(std::istream &is)
@@ -2166,6 +2493,8 @@ public:
 
     iterator begin();
     iterator end();
+
+    int size() const;
 
     friend double dot(SparseVector const &a, SparseVector const &b);
     friend bool in(std::string const &key, SparseVector const &v);
@@ -2225,6 +2554,9 @@ SparseVector & SparseVector::operator+=(SparseVector const &that)
 {
     for (auto &p: that.map_) {
         map_[p.first] += p.second;
+        if (std::fabs(map_[p.first]) < 1e-300) {
+            map_.erase(p.first);
+        }
     }
     return *this;
 }
@@ -2233,22 +2565,43 @@ SparseVector & SparseVector::operator-=(SparseVector const &that)
 {
     for (auto &p: that.map_) {
         map_[p.first] -= p.second;
+        if (std::fabs(map_[p.first]) < 1e-300) {
+            map_.erase(p.first);
+        }
     }
     return *this;
 }
 
 SparseVector & SparseVector::operator*=(double scalar)
 {
+    std::vector<std::string> to_erase;
+
     for (auto &p: map_) {
         p.second *= scalar;
+        if (std::fabs(p.second) < 1e-300) {
+            to_erase.push_back(p.first);
+        }
+    }
+
+    for (auto &k: to_erase) {
+        map_.erase(k);
     }
     return *this;
 }
 
 SparseVector & SparseVector::operator/=(double scalar)
 {
+    std::vector<std::string> to_erase;
+
     for (auto &p: map_) {
         p.second /= scalar;
+        if (std::fabs(p.second) < 1e-300) {
+            to_erase.push_back(p.first);
+        }
+    }
+
+    for (auto &k: to_erase) {
+        map_.erase(k);
     }
     return *this;
 }
@@ -2271,6 +2624,11 @@ SparseVector::iterator SparseVector::begin()
 SparseVector::iterator SparseVector::end()
 {
     return map_.end();
+}
+
+int SparseVector::size() const
+{
+    return map_.size();
 }
 
 double dot(SparseVector const &a, SparseVector const &b)
@@ -2315,7 +2673,8 @@ SparseVectorParser::parse_key_value()
     expect(is_, ':');
     is_.get();
     parse_whitespace(is_);
-    double value = parse_double(is_);
+    double value;
+    parse(is_, value);
     return std::make_pair(key, value);
 }
 
@@ -2398,6 +2757,140 @@ int main()
     test3();
 
     return 0;
+}
+@
+
+\section{Timer}
+
+@<timer@>=
+namespace ebt {
+
+struct Timer {
+    time_t before;
+    time_t after;
+
+    Timer();
+
+    ~Timer();
+};
+
+}
+@
+
+@<timer impl@>=
+namespace ebt {
+
+Timer::Timer()
+{
+    std::time(&before);
+}
+
+Timer::~Timer()
+{
+    std::time(&after);
+    int seconds = int(std::difftime(after, before));
+
+    std::cout << seconds / 60 << " mins " << seconds % 60 << " secs"
+        << std::endl;
+}
+
+}
+@
+
+\section{Argument Parser}
+
+@<argument parser@>=
+namespace ebt {
+
+struct Arg {
+    std::string name;
+    std::string help_str;
+    bool required;
+};
+
+struct ArgumentSpec {
+    std::string name;
+    std::string description;
+    std::vector<Arg> keys;
+};
+
+void usage(ArgumentSpec spec);
+
+std::unordered_map<std::string, std::string>
+parse_args(int argc, char *argv[], ArgumentSpec spec);
+
+}
+@
+
+@<argument parser impl@>=
+namespace ebt {
+
+void usage(ArgumentSpec spec)
+{
+    std::cout << "usage: " << spec.name << " args..." << std::endl;
+    std::cout << std::endl;
+    std::cout << spec.description << std::endl;
+    std::cout << std::endl;
+    std::cout << "Arguments:" << std::endl;
+    std::cout << std::endl;
+
+    for (auto &i: spec.keys) {
+        std::cout << "    --" << i.name;
+        for (int k = 0; k < 24 - int(i.name.size()); ++k) {
+            std::cout << " ";
+        }
+        std::cout << i.help_str << std::endl;
+    }
+
+    std::cout << std::endl;
+}
+
+std::unordered_map<std::string, std::string>
+parse_args(int argc, char *argv[], ArgumentSpec spec)
+{
+    std::unordered_set<std::string> required;
+    std::unordered_set<std::string> keys;
+
+    for (auto &i: spec.keys) {
+        if (i.required) {
+            required.insert(i.name);
+        }
+        keys.insert(i.name);
+    }
+
+    std::unordered_map<std::string, std::string> result;
+    int i = 1;
+    while (i < argc) {
+        if (ebt::startswith(argv[i], "--")) {
+            std::string key = std::string(argv[i]).substr(2);
+            if (!ebt::in(key, keys)) {
+                std::cout << "unknown argument --" << key << std::endl;
+                exit(1);
+            }
+            if (i + 1 < argc && !ebt::startswith(argv[i + 1], "--")) {
+                std::string value = std::string(argv[i + 1]);
+                result[key] = value;
+                ++i;
+            } else {
+                result[key] = "";
+            }
+        } else {
+            std::cout << "unknown argument " << argv[i] << std::endl;
+            exit(1);
+        }
+        ++i;
+    }
+
+    for (auto &i: required) {
+        if (!ebt::in(i, result)) {
+            std::cout << "argument --" << i << " is required" << std::endl;
+            exit(1);
+        }
+    }
+
+    return result;
+}
+
 }
 @
 
