@@ -716,6 +716,31 @@ Option<T> none()
 @<uni ref@>=
 namespace ebt {
 
+template <class T>
+class RuntimeUniRef {
+public:
+    RuntimeUniRef(T const &t)
+        : t_(&t)
+    {}
+
+    RuntimeUniRef(T &&t)
+        : t_(new T(std::move(t)))
+    {}
+
+    T & get()
+    {
+        return *const_cast<T*>(t_);
+    }
+
+    T const & get() const
+    {
+        return *t_;
+    }
+
+private:
+    T const *t_;
+};
+
 template <class T, bool is_default_constructible>
 class UniRefImpl;
 
