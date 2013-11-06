@@ -1041,9 +1041,12 @@ struct hash<vector<T>> {
 template <class T>
 ostream & operator<<(ostream &os, std::vector<T> const &vec)
 {
+    /*
     return os << "[" << ebt::join(ebt::map(vec,
             [](T const &t) { return to_string(t); }), ", ")
         << "]";
+    */
+    return os << "[" << ebt::join(vec, ", ") << "]";
 }
 
 template <class T>
@@ -1112,9 +1115,12 @@ namespace std {
 template <class T>
 ostream & operator<<(ostream &os, std::list<T> const &list)
 {
+    /*
     return os << "[" << ebt::join(ebt::map(list,
             [](T const &t) { return to_string(t); }), ", ")
         << "]";
+    */
+    return os << "[" << ebt::join(list, ", ") << "]";
 }
 
 }
