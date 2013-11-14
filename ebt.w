@@ -720,12 +720,19 @@ template <class T>
 class RuntimeUniRef {
 public:
     RuntimeUniRef(T const &t)
-        : t_(&t)
+        : t_(&t), own_(false)
     {}
 
     RuntimeUniRef(T &&t)
-        : t_(new T(std::move(t)))
+        : t_(new T(std::move(t))), own_(true)
     {}
+
+    ~RuntimeUniRef()
+    {
+        if (own_) {
+            delete t_;
+        }
+    }
 
     T & get()
     {
@@ -739,6 +746,7 @@ public:
 
 private:
     T const *t_;
+    bool own_;
 };
 
 template <class T, bool is_default_constructible>
