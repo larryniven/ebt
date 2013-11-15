@@ -727,11 +727,46 @@ public:
         : t_(new T(std::move(t))), own_(true)
     {}
 
+    RuntimeUniRef(RuntimeUniRef const &that)
+        : t_(new T(*that.t_)), own_(true)
+    {}
+
+    RuntimeUniRef(RuntimeUniRef &&that)
+        : t_(that.t_), own_(that.own_)
+    {
+        that.own_ = false;
+    }
+
     ~RuntimeUniRef()
     {
         if (own_) {
             delete t_;
         }
+    }
+
+    RuntimeUniRef & operator=(RuntimeUniRef const &that)
+    {
+        if (own_) {
+            delete t_;
+        }
+
+        t_ = new T(*that.t_);
+        own_ = true;
+        return *this;
+    }
+
+    RuntimeUniRef & operator=(RuntimeUniRef &&that)
+    {
+        if (own_) {
+            delete t_;
+        }
+
+        t_ = that.t_;
+        own_ = that.own_;
+
+        that.own_ = false;
+
+        return *this;
     }
 
     T & get()
