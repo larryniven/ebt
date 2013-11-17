@@ -1147,6 +1147,12 @@ std::istream & parse(std::istream &is, std::vector<T> &result)
     return is;
 }
 
+template <class T>
+bool in(int i, std::vector<T> const &v)
+{
+    return i < v.size();
+}
+
 }
 @
 
