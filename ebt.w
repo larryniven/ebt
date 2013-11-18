@@ -58,6 +58,7 @@
 @<either@>
 @<option@>
 
+@<strip@>
 @<escapeseq@>
 @<upper@>
 @<lower@>
@@ -115,6 +116,7 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 
 @<assert impl@>
 
+@<strip impl@>
 @<escapeseq impl@>
 @<upper impl@>
 @<lower impl@>
@@ -179,6 +181,41 @@ void assert_true(bool condition, std::string msg)
 @
 
 \section{String}
+
+@<strip@>=
+namespace ebt {
+
+std::string strip(std::string const &str, std::string const &chars=" \t\n");
+
+}
+@
+
+@<strip impl@>=
+namespace ebt {
+
+std::string strip(std::string const &str, std::string const &chars)
+{
+    int s = 0;
+    for (int i = 0; i < int(str.size()); ++i) {
+        if (chars.find(str[i]) == std::string::npos) {
+            break;
+        }
+        ++s;
+    }
+
+    int b = str.size();
+    for (int i = int(str.size()) - 1; i >= 0; --i) {
+        if (chars.find(str[i]) == std::string::npos) {
+            break;
+        }
+        --b;
+    }
+
+    return str.substr(s, b - s);
+}
+
+}
+@
 
 @<escapeseq@>=
 namespace ebt {
