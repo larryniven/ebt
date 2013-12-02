@@ -54,6 +54,8 @@
 
 @<hash combine@>
 
+@<log add@>
+
 @<uni ref@>
 @<either@>
 @<option@>
@@ -123,6 +125,8 @@ ostream & operator<<(ostream &os, std::reference_wrapper<T> const &t)
 @<split impl@>
 @<replace impl@>
 @<split utf-8 chars impl@>
+
+@<log add impl@>
 
 @<range impl@>
 @<sparse vector impl@>
@@ -571,6 +575,28 @@ int main()
 @
 
 \section{Utility}
+
+\subsection{Log Add}
+
+@<log add@>=
+namespace ebt {
+
+double log_add(double a, double b);
+
+}
+@
+
+@<log add impl@>=
+namespace ebt {
+
+double log_add(double a, double b)
+{
+    return std::max(a, b)
+        + std::log(1 + std::exp(std::min(a, b) - std::max(a, b)));
+}
+
+}
+@
 
 \subsection{Either}
 
