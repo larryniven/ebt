@@ -17,5 +17,6 @@
 #include "tuple.h"
 #include "pair.h"
 #include "unit_test.h"
+#include "functional.h"
 
 #endif

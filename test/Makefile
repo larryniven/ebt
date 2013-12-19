@@ -3,7 +3,8 @@ VPATH = ..
 
 .PHONY: all clean
 
-tests = test_json
+tests = test_json \
+        test_map
 
 all: $(tests)
 	@for t in $(tests); do \
@@ -16,4 +17,7 @@ clean:
 	-rm $(tests)
 
 test_json: test_json.o libebt.a
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_map: test_map.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^

@@ -28,16 +28,6 @@ namespace ebt {
             return b_ == e_;
         }
 
-        const_iterator begin() const
-        {
-            return b_;
-        }
-
-        const_iterator end() const
-        {
-            return e_;
-        }
-
     private:
         const_iterator b_;
         const_iterator e_;
