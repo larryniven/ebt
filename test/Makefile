@@ -4,7 +4,9 @@ VPATH = ..
 .PHONY: all clean
 
 tests = test_json \
-        test_map
+        test_map \
+        test_zip \
+        test_range
 
 all: $(tests)
 	@for t in $(tests); do \
@@ -21,3 +23,10 @@ test_json: test_json.o libebt.a
 
 test_map: test_map.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_zip: test_zip.o libebt.a
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_range: test_range.o libebt.a
+	$(CXX) $(CXXFLAGS) -o $@ $^
+

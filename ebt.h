@@ -18,5 +18,6 @@
 #include "pair.h"
 #include "unit_test.h"
 #include "functional.h"
+#include "exception.h"
 
 #endif

@@ -1,5 +1,6 @@
 #include "sparse_vector.h"
 #include "unordered_map.h"
+#include "json.h"
 #include <vector>
 #include <cmath>
 
@@ -125,6 +126,12 @@ namespace ebt {
     bool in(std::string const &key, SparseVector const &v)
     {
         return in(key, v.map_);
+    }
+
+    std::ostream& operator<<(std::ostream& os, SparseVector const& v)
+    {
+        json::dump(v.map_, os);
+        return os;
     }
     
 }

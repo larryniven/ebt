@@ -9,11 +9,10 @@
 
 namespace ebt {
 
-    template <class container>
-    std::ostream& join(container const& con, std::string sep, std::ostream& os)
+    template <class range>
+    typename std::enable_if<is_range<range>::value, std::ostream&>::type
+    join(range r, std::string sep, std::ostream& os)
     {
-        auto r = make_range(con);
-
         while (!r.empty()) {
             os << r.front();
             r.pop_front();
@@ -24,6 +23,13 @@ namespace ebt {
         }
 
         return os;
+    }
+
+    template <class container>
+    typename std::enable_if<!is_range<container>::value, std::ostream&>::type
+    join(container const& con, std::string sep, std::ostream& os)
+    {
+        return join(make_range(con), sep, os);
     }
 
     template <class container>

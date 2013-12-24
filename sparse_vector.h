@@ -38,6 +38,8 @@ namespace ebt {
     
         friend double dot(SparseVector const &a, SparseVector const &b);
         friend bool in(std::string const &key, SparseVector const &v);
+
+        friend std::ostream& operator<<(std::ostream& os, SparseVector const& v);
     
     private:
         std::unordered_map<std::string, double> map_;
@@ -45,6 +47,7 @@ namespace ebt {
     
     double dot(SparseVector const &a, SparseVector const &b);
     bool in(std::string const &key, SparseVector const &v);
+    std::ostream& operator<<(std::ostream& os, SparseVector const& v);
     
 }
 

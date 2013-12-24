@@ -1,5 +1,6 @@
 #include "json.h"
 #include "string.h"
+#include "exception.h"
 
 namespace ebt {
 
@@ -20,15 +21,6 @@ namespace ebt {
             os << d;
         }
 
-        json_parser_exception::json_parser_exception(std::string msg)
-            : msg_(msg)
-        {}
-
-        char const* json_parser_exception::what() const noexcept
-        {
-            return msg_.c_str();
-        }
-
         double json_parser<double>::parse(std::istream& is)
         {
             std::string s;
@@ -39,7 +31,7 @@ namespace ebt {
             if (is.peek() == '+') {
                 s.append(1, is.get());
             } else if (is.peek() == '-') {
-                s.append(1, '-');
+                s.append(1, is.get());
             }
 
             if (non_zeros.find(is.peek()) != std::string::npos) {
@@ -85,7 +77,7 @@ namespace ebt {
             if (is.peek() == '+') {
                 is.get();
             } else if (is.peek() == '-') {
-                s.append(1, '-');
+                s.append(1, is.get());
             }
 
             if (non_zeros.find(is.peek()) != std::string::npos) {
@@ -110,7 +102,7 @@ namespace ebt {
                 if (is.peek() == '\\') {
                     is.get();
                     if (is.peek() != '"' && is.peek() != '\\') {
-                        throw json_parser_exception(
+                        throw parser_exception(
                             "can only escape \" and \\");
                     }
                 }
@@ -124,7 +116,7 @@ namespace ebt {
         void expect(std::istream& is, char c)
         {
             if (is.peek() != c) {
-                throw json_parser_exception(format(
+                throw parser_exception(format(
                     "expected: <{}> actual: <{}> ", c, is.peek()));
             }
         }

@@ -11,8 +11,9 @@ args.o: args.h
 sparse_vector.o: sparse_vector.h
 math_util.o: math_util.h
 hash.cc: hash.h
+exception.o: exception.h
 
-libebt.a: json.o unit_test.o string.o args.o sparse_vector.o math_util.o hash.o
+libebt.a: json.o unit_test.o string.o args.o sparse_vector.o math_util.o hash.o exception.o
 	$(AR) rcs $@ $^
 
 clean:

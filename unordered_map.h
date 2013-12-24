@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include "option.h"
+#include "json.h"
 
 namespace ebt {
 
@@ -31,6 +32,17 @@ namespace ebt {
         } else {
             return map.at(key);
         }
+    }
+
+}
+
+namespace std {
+
+    template <class T>
+    ostream& operator<<(ostream& os, unordered_map<string, T> const& map)
+    {
+        ebt::json::dump(map, os);
+        return os;
     }
 
 }

@@ -7,6 +7,7 @@
 #include <exception>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "string.h"
 
 namespace ebt {
@@ -16,6 +17,16 @@ namespace ebt {
         void dump(std::string const& str, std::ostream& os);
         void dump(int i, std::ostream& os);
         void dump(double d, std::ostream& os);
+
+        template <class U, class V>
+        void dump(std::pair<U, V> const& p, std::ostream& os)
+        {
+            os << "(";
+            dump(p.first, os);
+            os << ", ";
+            dump(p.second, os);
+            os << ")";
+        }
 
         template <class T>
         void dump(std::vector<T> const& vec, std::ostream& os)
@@ -57,16 +68,6 @@ namespace ebt {
 
             os << "}";
         }
-
-        class json_parser_exception : public std::exception {
-        public:
-            json_parser_exception(std::string msg);
-
-            char const* what() const noexcept;
-
-        private:
-            std::string msg_;
-        };
 
         void expect(std::istream& is, char c);
         void whitespace(std::istream& is);
@@ -133,6 +134,11 @@ namespace ebt {
                 while (is.peek() != '}') {
                     json_parser<std::string> key_parser;
                     auto key = key_parser.parse(is);
+
+                    expect(is, ':');
+                    is.get();
+                    whitespace(is);
+
                     result[key] = value_parser.parse(is);
                     whitespace(is);
 
