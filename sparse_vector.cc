@@ -134,4 +134,8 @@ namespace ebt {
         return os;
     }
     
+    double get(ebt::SparseVector const& vec, std::string key, double default_)
+    {
+        return ebt::get(vec.map_, key, default_);
+    }
 }
