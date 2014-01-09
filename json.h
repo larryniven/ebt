@@ -19,12 +19,50 @@ namespace ebt {
         void dump(double d, std::ostream& os);
 
         template <class U, class V>
+        void dump(std::pair<U, V> const& p, std::ostream& os);
+
+        template <class... Args>
+        void dump(std::tuple<Args...> const& p, std::ostream& os);
+
+        template <class T>
+        void dump(std::vector<T> const& vec, std::ostream& os);
+
+        template <class V>
+        void dump(std::unordered_map<std::string, V> const& map, std::ostream& os);
+
+        template <class U, class V>
         void dump(std::pair<U, V> const& p, std::ostream& os)
         {
             os << "(";
             dump(p.first, os);
             os << ", ";
             dump(p.second, os);
+            os << ")";
+        }
+
+        template <int t, class... Args>
+        struct dump_tuple {
+            void operator()(std::tuple<Args...> const& p, std::ostream& os)
+            {
+                dump_tuple<t-1, Args...>()(p, os);
+                os << ", ";
+                dump(std::get<t-1>(p), os);
+            }
+        };
+
+        template <class... Args>
+        struct dump_tuple<1, Args...> {
+            void operator()(std::tuple<Args...> const& p, std::ostream& os)
+            {
+                dump(std::get<0>(p), os);
+            }
+        };
+
+        template <class... Args>
+        void dump(std::tuple<Args...> const& p, std::ostream& os)
+        {
+            os << "(";
+            dump_tuple<std::tuple_size<std::tuple<Args...>>::value, Args...>()(p, os);
             os << ")";
         }
 

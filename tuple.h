@@ -3,6 +3,7 @@
 
 #include <tuple>
 #include "hash.h"
+#include "json.h"
 
 namespace std {
 
@@ -35,6 +36,12 @@ namespace std {
         }
     };
 
+    template <class... Args>
+    std::ostream& operator<<(std::ostream& os, std::tuple<Args...> const& t)
+    {
+        ebt::json::dump(t, os);
+        return os;
+    }
 }
 
 #endif
