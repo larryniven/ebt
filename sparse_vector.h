@@ -50,6 +50,8 @@ namespace ebt {
     bool in(std::string const &key, SparseVector const &v);
     std::ostream& operator<<(std::ostream& os, SparseVector const& v);
     double get(ebt::SparseVector const& vec, std::string key, double default_);
+
+    double norm(ebt::SparseVector const& v, int p);
     
 }
 

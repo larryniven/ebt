@@ -4,6 +4,7 @@
 namespace ebt {
 
     double log_add(double a, double b);
+    double sign(double x);
 
 }
 

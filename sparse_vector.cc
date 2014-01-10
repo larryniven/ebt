@@ -3,6 +3,8 @@
 #include "json.h"
 #include <vector>
 #include <cmath>
+#include <limits>
+#include <iostream>
 
 namespace ebt {
 
@@ -137,5 +139,23 @@ namespace ebt {
     double get(ebt::SparseVector const& vec, std::string key, double default_)
     {
         return ebt::get(vec.map_, key, default_);
+    }
+
+    double norm(ebt::SparseVector const& v, int p)
+    {
+        double max = 0;
+        for (auto& e: v) {
+            if (std::fabs(e.second) > max) {
+                max = std::fabs(e.second);
+            }
+        }
+        if (max == 0) {
+            return 0;
+        }
+        double sum = 0;
+        for (auto& e: v) {
+            sum += std::pow(std::fabs(e.second) / max, p);
+        }
+        return max * std::pow(sum, 1.0 / p);
     }
 }
