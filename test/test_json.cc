@@ -1,6 +1,5 @@
 #include <sstream>
-#include "json.h"
-#include "unit_test.h"
+#include "ebt.h"
 
 void test_parse_empty_string()
 {
@@ -74,6 +73,17 @@ void test_parse_string_to_double_map()
     ebt::assert_equals(2, result.at("b"));
 }
 
+void test_parse_string_to_vec_map()
+{
+    std::string s = "{\"mean\": [1, 2, 3], \"covar\": [4, 5, 6]}";
+    std::istringstream iss(s);
+    ebt::json::json_parser<std::unordered_map<std::string,
+        std::vector<double>>> parser;
+    std::unordered_map<std::string, std::vector<double>> result = parser.parse(iss);
+    ebt::assert_equals(std::vector<double>{1, 2, 3}, result.at("mean"));
+    ebt::assert_equals(std::vector<double>{4, 5, 6}, result.at("covar"));
+}
+
 void test_dump_vector_of_int()
 {
     std::ostringstream oss;
@@ -91,6 +101,7 @@ int main()
     test_parse_vector_of_int();
     test_parse_double();
     test_parse_scientific();
+    test_parse_string_to_vec_map();
 
     test_dump_vector_of_int();
 
