@@ -20,4 +20,8 @@
 #include "functional.h"
 #include "exception.h"
 
+// deprecated
+#include "ngram.h"
+#include "timer.h"
+
 #endif
