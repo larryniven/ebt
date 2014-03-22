@@ -50,19 +50,27 @@ namespace ebt {
                 }
             }
 
+            std::string exponent;
+
             if (is.peek() == 'e') {
                 s.append(1, is.get());
 
                 if (is.peek() == '+') {
-                    s.append(1, is.get());
+                    exponent.append(1, is.get());
                 } else if (is.peek() == '-') {
-                    s.append(1, is.get());
+                    exponent.append(1, is.get());
                 }
 
                 while (digits.find(is.peek()) != std::string::npos) {
-                    s.append(1, is.get());
+                    exponent.append(1, is.get());
                 }
             }
+
+            if (exponent != "" && std::stoi(exponent) < -308) {
+                return 0;
+            }
+
+            s += exponent;
 
             return std::stod(s);
         }
