@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 #include "string.h"
+#include <complex>
 
 namespace ebt {
 
@@ -17,6 +18,12 @@ namespace ebt {
         void dump(std::string const& str, std::ostream& os);
         void dump(int i, std::ostream& os);
         void dump(double d, std::ostream& os);
+
+        template <class T>
+        void dump(std::complex<T> const& c, std::ostream& os)
+        {
+            os << c;
+        }
 
         template <class U, class V>
         void dump(std::pair<U, V> const& p, std::ostream& os);
@@ -126,6 +133,23 @@ namespace ebt {
         template <>
         struct json_parser<std::string> {
             std::string parse(std::istream& is);
+        };
+
+        template <class T>
+        struct json_parser<std::complex<T>> {
+            std::complex<T> parse(std::istream& is)
+            {
+                json_parser<T> t_parser;
+                expect(is, '(');
+                is.get();
+                T real = t_parser.parse(is);
+                expect(is, ',');
+                is.get();
+                T imag = t_parser.parse(is);
+                expect(is, ')');
+                is.get();
+                return {real, imag};
+            }
         };
 
         template <class T>

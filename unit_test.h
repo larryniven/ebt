@@ -32,6 +32,16 @@ namespace ebt {
         }
     }
 
+    template <class T, class U = T>
+    void assert_equals(T expected, U actual, double eps)
+    {
+        if (std::fabs(expected - actual) > eps) {
+            std::cerr << "expected: <" << expected << "> but was: <"
+                << actual << ">" << std::endl;
+            exit(1);
+        }
+    }
+
 }
 
 #endif

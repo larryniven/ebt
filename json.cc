@@ -66,7 +66,7 @@ namespace ebt {
                 }
             }
 
-            if (exponent != "" && std::stoi(exponent) < -308) {
+            if (exponent != "" && std::stoi(exponent) <= -308) {
                 return 0;
             }
 
