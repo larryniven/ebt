@@ -34,8 +34,8 @@ namespace ebt {
         template <class T>
         void dump(std::vector<T> const& vec, std::ostream& os);
 
-        template <class V>
-        void dump(std::unordered_map<std::string, V> const& map, std::ostream& os);
+        template <class K, class V>
+        void dump(std::unordered_map<K, V> const& map, std::ostream& os);
 
         template <class U, class V>
         void dump(std::pair<U, V> const& p, std::ostream& os)
@@ -92,8 +92,8 @@ namespace ebt {
             os << "]";
         }
 
-        template <class V>
-        void dump(std::unordered_map<std::string, V> const& map, std::ostream& os)
+        template <class K, class V>
+        void dump(std::unordered_map<K, V> const& map, std::ostream& os)
         {
             os << "{";
 
