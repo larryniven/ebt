@@ -138,7 +138,8 @@ namespace ebt {
 
     bool endswith(std::string const& s, std::string const& suffix)
     {
-        return s.find(suffix) == s.size() - suffix.size();
+        int i = s.find(suffix);
+        return i >= 0 && i == int(s.size()) - int(suffix.size());
     }
 
     std::vector<std::string> split_utf8_chars(std::string const &s)

@@ -11,9 +11,11 @@ namespace ebt {
     Timer::~Timer()
     {
         std::time(&after);
-        int seconds = int(std::difftime(after, before));
+        double seconds = std::difftime(after, before);
+
+        int minutes = int(seconds / 60);
     
-        std::cout << seconds / 60 << " mins " << seconds % 60 << " secs"
+        std::cout << minutes << " mins " << seconds - minutes * 60 << " secs"
             << std::endl;
     }
 

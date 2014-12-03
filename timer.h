@@ -14,6 +14,26 @@ namespace ebt {
         ~Timer();
     };
 
+    template <int i>
+    struct accu_timer {
+        time_t before;
+        time_t after;
+
+        static double secs;
+
+        accu_timer()
+        {
+            std::time(&before);
+        }
+
+        ~accu_timer()
+        {
+            std::time(&after);
+            secs += std::difftime(after, before);
+        }
+    };
+
+    template <int i> double accu_timer<i>::secs = 0;
 }
 
 #endif
