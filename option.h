@@ -1,7 +1,7 @@
 #ifndef EBT_OPTION_H
 #define EBT_OPTION_H
 
-#include "either.h"
+#include "ebt/either.h"
 
 namespace ebt {
 

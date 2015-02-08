@@ -1,4 +1,4 @@
-#include "hash.h"
+#include "ebt/hash.h"
 
 namespace ebt {
 

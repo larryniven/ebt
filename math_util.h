@@ -1,5 +1,5 @@
-#ifndef EBT_MATH_H
-#define EBT_MATH_H
+#ifndef EBT_MATH_UTIL_H
+#define EBT_MATH_UTIL_H
 
 namespace ebt {
 

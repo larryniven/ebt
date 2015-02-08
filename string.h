@@ -1,7 +1,7 @@
 #ifndef EBT_STRING_H
 #define EBT_STRING_H
 
-#include "range.h"
+#include "ebt/range.h"
 #include <string>
 #include <ostream>
 #include <sstream>

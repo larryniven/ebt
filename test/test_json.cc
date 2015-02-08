@@ -1,5 +1,5 @@
 #include <sstream>
-#include "ebt.h"
+#include "ebt/ebt.h"
 
 void test_parse_empty_string()
 {

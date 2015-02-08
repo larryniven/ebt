@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++11 -Wall
+CXXFLAGS += -std=c++11 -Wall -I ../
 AR = gcc-ar
 
 .PHONY: all clean check

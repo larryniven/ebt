@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include "string.h"
+#include "ebt/string.h"
 #include <complex>
 
 namespace ebt {

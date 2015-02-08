@@ -2,8 +2,8 @@
 #define EBT_TUPLE_H
 
 #include <tuple>
-#include "hash.h"
-#include "json.h"
+#include "ebt/hash.h"
+#include "ebt/json.h"
 
 namespace std {
 

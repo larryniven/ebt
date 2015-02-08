@@ -1,8 +1,8 @@
 #ifndef EBT_VECTOR_H
 #define EBT_VECTOR_H
 
-#include "json.h"
-#include "hash.h"
+#include "ebt/json.h"
+#include "ebt/hash.h"
 
 namespace std {
 

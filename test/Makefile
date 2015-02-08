@@ -1,12 +1,12 @@
-CXXFLAGS += -std=c++11 -I ../
+CXXFLAGS += -std=c++11 -I ../../
 VPATH = ..
 
 .PHONY: all clean
 
 tests = test_json \
-        test_map \
-        test_zip \
-        test_range
+    test_map \
+    test_zip \
+    test_range
 
 all: $(tests)
 	@for t in $(tests); do \

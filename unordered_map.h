@@ -2,8 +2,8 @@
 #define EBT_UNORDERED_MAP_H
 
 #include <unordered_map>
-#include "option.h"
-#include "json.h"
+#include "ebt/option.h"
+#include "ebt/json.h"
 
 namespace ebt {
 

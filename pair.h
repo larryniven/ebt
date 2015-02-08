@@ -2,7 +2,7 @@
 #define EBT_PAIR_H
 
 #include <utility>
-#include "hash.h"
+#include "ebt/hash.h"
 
 namespace std {
 
