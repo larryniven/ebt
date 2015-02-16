@@ -53,6 +53,13 @@ void test_insert_and_search()
         std::cout << " " << map.probe_count_at(i);
         std::cout << std::endl;
     }
+
+    for (int i = 0; i < 1000000; ++i) {
+        if (map.in("foo " + std::to_string(i))) {
+            std::cout << "foo " + std::to_string(i) << " should not be in the map" << std::endl;
+            break;
+        }
+    }
 }
 
 int main()
