@@ -19,7 +19,7 @@
 #include "ebt/unit_test.h"
 #include "ebt/functional.h"
 #include "ebt/exception.h"
-#include "ebt/bvector.h"
+#include "ebt/hashmap.h"
 
 // deprecated
 #include "ngram.h"
