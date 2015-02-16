@@ -6,7 +6,8 @@ VPATH = ..
 tests = test_json \
     test_map \
     test_zip \
-    test_range
+    test_range \
+    test_hashmap
 
 all: $(tests)
 	@for t in $(tests); do \
@@ -30,3 +31,5 @@ test_zip: test_zip.o libebt.a
 test_range: test_range.o libebt.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+test_hashmap: test_hashmap.o libebt.a
+	$(CXX) $(CXXFLAGS) -o $@ $^
