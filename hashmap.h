@@ -120,12 +120,20 @@ namespace ebt {
                     i < std::min<int>(base + max_probe_count_ + 1, buckets_.size());
                     ++i) {
 
+                if (buckets_.at(i).empty()) {
+                    return -1;
+                }
+
                 if (buckets_.at(i).hash == hash && key_values_.at(buckets_.at(i).index).first == key) {
                     return i;
                 }
             }
 
             for (int i = 0; i < base + max_probe_count_ + 1 - int(buckets_.size()); ++i) {
+                if (buckets_.at(i).empty()) {
+                    return -1;
+                }
+
                 if (buckets_.at(i).hash == hash && key_values_.at(buckets_.at(i).index).first == key) {
                     return i;
                 }
