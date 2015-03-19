@@ -219,6 +219,42 @@ namespace ebt {
             }
         };
 
+        template <class First, class... Args>
+        struct parse_tuple {
+            std::tuple<First, Args...> operator()(std::istream& is)
+            {
+                json_parser<First> first_parser;
+                auto first = std::make_tuple(first_parser.parse(is));
+                expect(is, ',');
+                is.get();
+                expect(is, ' ');
+                is.get();
+                return std::tuple_cat(first, parse_tuple<Args...>()(is));
+            }
+        };
+
+        template <class Last>
+        struct parse_tuple<Last> {
+            std::tuple<Last> operator()(std::istream& is)
+            {
+                json_parser<Last> last_parser;
+                return std::make_tuple(last_parser.parse(is));
+            }
+        };
+
+        template <class... Args>
+        struct json_parser<std::tuple<Args...>> {
+            std::tuple<Args...> parse(std::istream& is)
+            {
+                expect(is, '(');
+                is.get();
+                auto result = parse_tuple<Args...>()(is);
+                expect(is, ')');
+                is.get();
+                return result;
+            }
+        };
+
     }
 }
 
