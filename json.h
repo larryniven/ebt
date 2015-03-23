@@ -255,6 +255,12 @@ namespace ebt {
             }
         };
 
+        template <class T>
+        T load(std::istream& is)
+        {
+            return json_parser<T>().parse(is);
+        }
+
     }
 }
 
