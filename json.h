@@ -17,6 +17,7 @@ namespace ebt {
 
         void dump(std::string const& str, std::ostream& os);
         void dump(int i, std::ostream& os);
+        void dump(float d, std::ostream& os);
         void dump(double d, std::ostream& os);
 
         template <class T>
@@ -123,6 +124,11 @@ namespace ebt {
         template <>
         struct json_parser<int> {
             int parse(std::istream& is);
+        };
+
+        template <>
+        struct json_parser<float> {
+            float parse(std::istream& is);
         };
 
         template <>

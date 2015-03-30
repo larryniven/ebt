@@ -21,6 +21,60 @@ namespace ebt {
             os << d;
         }
 
+        float json_parser<float>::parse(std::istream& is)
+        {
+            std::string s;
+
+            std::string non_zeros = "123456789";
+            std::string digits = "0123456789";
+
+            if (is.peek() == '+') {
+                s.append(1, is.get());
+            } else if (is.peek() == '-') {
+                s.append(1, is.get());
+            }
+
+            if (non_zeros.find(is.peek()) != std::string::npos) {
+                s.append(1, is.get());
+            }
+
+            while (digits.find(is.peek()) != std::string::npos) {
+                s.append(1, is.get());
+            }
+
+            if (is.peek() == '.') {
+                s.append(1, is.get());
+
+                while (digits.find(is.peek()) != std::string::npos) {
+                    s.append(1, is.get());
+                }
+            }
+
+            std::string exponent;
+
+            if (is.peek() == 'e') {
+                s.append(1, is.get());
+
+                if (is.peek() == '+') {
+                    exponent.append(1, is.get());
+                } else if (is.peek() == '-') {
+                    exponent.append(1, is.get());
+                }
+
+                while (digits.find(is.peek()) != std::string::npos) {
+                    exponent.append(1, is.get());
+                }
+            }
+
+            if (exponent != "" && std::stoi(exponent) <= -308) {
+                return 0;
+            }
+
+            s += exponent;
+
+            return std::stof(s);
+        }
+
         double json_parser<double>::parse(std::istream& is)
         {
             std::string s;
