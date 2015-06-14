@@ -233,8 +233,7 @@ namespace ebt {
                 auto first = std::make_tuple(first_parser.parse(is));
                 expect(is, ',');
                 is.get();
-                expect(is, ' ');
-                is.get();
+                whitespace(is);
                 return std::tuple_cat(first, parse_tuple<Args...>()(is));
             }
         };
