@@ -19,7 +19,7 @@ void test_zip()
     ebt::assert_equals(3, std::get<0>(r.front()));
     ebt::assert_equals(std::string("aaa"), std::get<1>(r.front()));
     r.pop_front();
-    ebt::assert_true(r.empty(), "r should be empty");
+    ebt::assert(r.empty(), "r should be empty");
 }
 
 int main()

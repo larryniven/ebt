@@ -2,7 +2,7 @@
 
 namespace ebt {
 
-    void assert_true(bool condition, std::string msg)
+    void assert(bool condition, std::string msg)
     {
         if (!condition) {
             std::cerr << msg << std::endl;
