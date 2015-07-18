@@ -1,4 +1,4 @@
-#include "ebt/unit_test.h"
+#include "ebt/assert.h"
 
 namespace ebt {
 

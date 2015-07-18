@@ -16,7 +16,7 @@
 #include "ebt/math_util.h"
 #include "ebt/tuple.h"
 #include "ebt/pair.h"
-#include "ebt/unit_test.h"
+#include "ebt/assert.h"
 #include "ebt/functional.h"
 #include "ebt/exception.h"
 #include "ebt/hashmap.h"
