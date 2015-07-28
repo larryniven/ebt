@@ -57,7 +57,7 @@ namespace ebt {
                     result[key] = "";
                 }
             } else {
-                std::cout << "unknown argument " << argv[i] << std::endl;
+                std::cout << "unknown argument \"" << argv[i] << "\"" << std::endl;
                 exit(1);
             }
             ++i;
