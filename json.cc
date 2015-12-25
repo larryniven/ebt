@@ -6,17 +6,22 @@ namespace ebt {
 
     namespace json {
 
-        void dump(std::string const& str, std::ostream& os)
+        void json_writer<std::string>::write(std::string const& str, std::ostream& os)
         {
             os << '"' << replace(str, "\"", "\\\"") << '"';
         }
 
-        void dump(int i, std::ostream& os)
+        void json_writer<int>::write(int i, std::ostream& os)
         {
             os << i;
         }
 
-        void dump(double d, std::ostream& os)
+        void json_writer<float>::write(float f, std::ostream& os)
+        {
+            os << f;
+        }
+
+        void json_writer<double>::write(double d, std::ostream& os)
         {
             os << d;
         }

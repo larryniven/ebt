@@ -15,111 +15,139 @@ namespace ebt {
 
     namespace json {
 
-        void dump(std::string const& str, std::ostream& os);
-        void dump(int i, std::ostream& os);
-        void dump(float d, std::ostream& os);
-        void dump(double d, std::ostream& os);
+        template <class T>
+        struct json_writer;
 
         template <class T>
-        void dump(std::complex<T> const& c, std::ostream& os)
+        void dump(T const& t, std::ostream& os)
         {
-            os << c;
+            json_writer<T>().write(t, os);
         }
 
-        template <class U, class V>
-        void dump(std::pair<U, V> const& p, std::ostream& os);
+        template <>
+        struct json_writer<std::string> {
+            void write(std::string const& str, std::ostream& os);
+        };
 
-        template <class... Args>
-        void dump(std::tuple<Args...> const& p, std::ostream& os);
+        template <>
+        struct json_writer<int> {
+            void write(int i, std::ostream& os);
+        };
+
+        template <>
+        struct json_writer<float> {
+            void write(float d, std::ostream& os);
+        };
+
+        template <>
+        struct json_writer<double> {
+            void write(double d, std::ostream& os);
+        };
 
         template <class T>
-        void dump(std::vector<T> const& vec, std::ostream& os);
-
-        template <class K, class V>
-        void dump(std::unordered_map<K, V> const& map, std::ostream& os);
-
-        template <class U, class V>
-        void dump(std::pair<U, V> const& p, std::ostream& os)
-        {
-            os << "(";
-            dump(p.first, os);
-            os << ", ";
-            dump(p.second, os);
-            os << ")";
-        }
-
-        template <int t, class... Args>
-        struct dump_tuple {
-            void operator()(std::tuple<Args...> const& p, std::ostream& os)
+        struct json_writer<std::complex<T>> {
+            void write(std::complex<T> const& c, std::ostream& os)
             {
-                dump_tuple<t-1, Args...>()(p, os);
+                os << c;
+            }
+        };
+
+        template <class U, class V>
+        struct json_writer<std::pair<U, V>> {
+            void write(std::pair<U, V> const& p, std::ostream& os)
+            {
+                os << "(";
+                dump(p.first, os);
                 os << ", ";
-                dump(std::get<t-1>(p), os);
+                dump(p.second, os);
+                os << ")";
             }
         };
 
-        template <class... Args>
-        struct dump_tuple<1, Args...> {
-            void operator()(std::tuple<Args...> const& p, std::ostream& os)
+        template <int i, class... Args>
+        struct write_tuple {
+            void operator()(std::tuple<Args...> const& t, std::ostream& os)
             {
-                dump(std::get<0>(p), os);
+                write_tuple<i-1, Args...>()(t, os);
+                os << ", ";
+                dump(std::get<i-1>(t), os);
             }
         };
 
         template <class... Args>
-        void dump(std::tuple<Args...> const& p, std::ostream& os)
-        {
-            os << "(";
-            dump_tuple<std::tuple_size<std::tuple<Args...>>::value, Args...>()(p, os);
-            os << ")";
-        }
+        struct write_tuple<1, Args...> {
+            void operator()(std::tuple<Args...> const& t, std::ostream& os)
+            {
+                dump(std::get<0>(t), os);
+            }
+        };
+
+        template <class... Args>
+        struct json_writer<std::tuple<Args...>> {
+            void write(std::tuple<Args...> const& t, std::ostream& os)
+            {
+                os << "(";
+                write_tuple<std::tuple_size<std::tuple<Args...>>::value, Args...>()(t, os);
+                os << ")";
+            }
+        };
 
         template <class T>
-        void dump(std::vector<T> const& vec, std::ostream& os)
-        {
-            os << "[";
+        struct json_writer<std::vector<T>> {
+            void write(std::vector<T> const& vec, std::ostream& os)
+            {
+                os << "[";
 
-            auto r = make_range(vec);
+                auto r = make_range(vec);
 
-            while (!r.empty()) {
-                dump(r.front(), os);
-                r.pop_front();
+                while (!r.empty()) {
+                    dump(r.front(), os);
+                    r.pop_front();
 
-                if (!r.empty()) {
-                    os << ", ";
+                    if (!r.empty()) {
+                        os << ", ";
+                    }
                 }
-            }
 
-            os << "]";
-        }
+                os << "]";
+            }
+        };
 
         template <class K, class V>
-        void dump(std::unordered_map<K, V> const& map, std::ostream& os)
-        {
-            os << "{";
+        struct json_writer<std::unordered_map<K, V>> {
+            void write(std::unordered_map<K, V> const& map, std::ostream& os)
+            {
+                os << "{";
 
-            auto r = make_range(map);
+                auto r = make_range(map);
 
-            while (!r.empty()) {
-                dump(r.front().first, os);
-                os << ": ";
-                dump(r.front().second, os);
+                while (!r.empty()) {
+                    dump(r.front().first, os);
+                    os << ": ";
+                    dump(r.front().second, os);
 
-                r.pop_front();
+                    r.pop_front();
 
-                if (!r.empty()) {
-                    os << ", ";
+                    if (!r.empty()) {
+                        os << ", ";
+                    }
                 }
-            }
 
-            os << "}";
-        }
+                os << "}";
+            }
+        };
 
         void expect(std::istream& is, char c);
         void whitespace(std::istream& is);
 
         template <class T>
         struct json_parser;
+
+        template <class T>
+        T load(std::istream& is)
+        {
+            return json_parser<T>().parse(is);
+        }
 
         template <>
         struct json_parser<int> {
@@ -259,12 +287,6 @@ namespace ebt {
                 return result;
             }
         };
-
-        template <class T>
-        T load(std::istream& is)
-        {
-            return json_parser<T>().parse(is);
-        }
 
     }
 }

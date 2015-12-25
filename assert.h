@@ -7,8 +7,6 @@
 
 namespace ebt {
 
-    void assert(bool condition, std::string msg);
-    
     template <class T, class U = T>
     typename std::enable_if<!std::is_floating_point<T>::value, void>::type
     assert_equals(T const &expected, U const &actual)
