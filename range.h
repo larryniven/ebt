@@ -37,6 +37,7 @@ namespace ebt {
             if (!r_->empty()) {
                 r_->pop_front();
             }
+            return *this;
         }
 
         typename range_iterator::value_type const& operator*()
