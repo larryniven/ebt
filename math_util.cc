@@ -6,8 +6,11 @@ namespace ebt {
 
     double log_add(double a, double b)
     {
-        return std::max(a, b)
-            + std::log(1 + std::exp(std::min(a, b) - std::max(a, b)));
+        if (a > b) {
+            return a + std::log(1 + std::exp(b - a));
+        } else {
+            return b + std::log(1 + std::exp(a - b));
+        }
     }
 
     double sign(double x)
