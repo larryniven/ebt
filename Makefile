@@ -13,8 +13,9 @@ math_util.o: math_util.h
 hash.cc: hash.h
 exception.o: exception.h
 timer.o: timer.h
+logger.o: logger.h
 
-libebt.a: json.o string.o args.o sparse_vector.o math_util.o hash.o exception.o timer.o
+libebt.a: json.o string.o args.o sparse_vector.o math_util.o hash.o exception.o timer.o logger.o
 	$(AR) rcs $@ $^
 
 clean:

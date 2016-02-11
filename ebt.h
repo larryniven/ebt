@@ -20,6 +20,7 @@
 #include "ebt/functional.h"
 #include "ebt/exception.h"
 #include "ebt/hashmap.h"
+#include "ebt/logger.h"
 
 // deprecated
 #include "ngram.h"
