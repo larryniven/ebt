@@ -30,6 +30,11 @@ namespace ebt {
         };
 
         template <>
+        struct json_writer<unsigned int> {
+            void write(unsigned int i, std::ostream& os);
+        };
+
+        template <>
         struct json_writer<int> {
             void write(int i, std::ostream& os);
         };

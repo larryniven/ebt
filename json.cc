@@ -11,6 +11,11 @@ namespace ebt {
             os << '"' << replace(str, "\"", "\\\"") << '"';
         }
 
+        void json_writer<unsigned int>::write(unsigned int i, std::ostream& os)
+        {
+            os << i;
+        }
+
         void json_writer<int>::write(int i, std::ostream& os)
         {
             os << i;
